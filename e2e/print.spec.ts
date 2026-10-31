@@ -209,3 +209,33 @@ test("test_print_draws_diagrams_light", async ({ page }) => {
   // Restored once print() returns, even without `afterprint`.
   await expect.poll(fill).toBe(dark);
 });
+
+test("a diagram moves only as far as it overflows its frame", async ({ page }) => {
+  await open(page, "light");
+  const figure = page.locator(".sheet .mermaid");
+  const svg = figure.locator("> svg");
+  const drag = async () => {
+    const at = await svg.boundingBox();
+    if (!at) throw new Error("no diagram");
+    const [x, y] = [at.x + at.width / 2, at.y + at.height / 2];
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 3000, y + 3000, { steps: 2 });
+    await page.mouse.up();
+  };
+
+  const still = await svg.boundingBox();
+  await drag();
+  expect(await svg.boundingBox()).toEqual(still);
+
+  // Zoomed past the frame, it stops with its edge at the frame's.
+  const zoomIn = figure.locator(".mermaid-controls > button").first();
+  await figure.hover();
+  for (let i = 0; i < 6; i++) await zoomIn.click();
+  await drag();
+  const frame = await figure.boundingBox();
+  const moved = await svg.boundingBox();
+  if (!frame || !moved) throw new Error("no diagram");
+  expect(moved.x).toBeCloseTo(frame.x, 0);
+  expect(moved.y).toBeCloseTo(frame.y, 0);
+});

@@ -141,11 +141,11 @@ test("mermaid diagram zooms and pans", async ({ page }) => {
   if (!fig) throw new Error("figure has no box");
   await page.mouse.move(fig.x + fig.width / 2, fig.y + fig.height / 2);
   await page.mouse.down();
-  await page.mouse.move(fig.x + fig.width / 2 + 40, fig.y + fig.height / 2 + 20, { steps: 4 });
+  await page.mouse.move(fig.x + fig.width / 2 + 40, fig.y + fig.height / 2 + 10, { steps: 4 });
   await page.mouse.up();
   const panned = await box();
   expect(panned.x - zoomed.x).toBeCloseTo(40, 0);
-  expect(panned.y - zoomed.y).toBeCloseTo(20, 0);
+  expect(panned.y - zoomed.y).toBeCloseTo(10, 0);
 
   await figure.getByRole("button", { name: "Zoom out" }).click();
   expect((await box()).width).toBeLessThan(panned.width);

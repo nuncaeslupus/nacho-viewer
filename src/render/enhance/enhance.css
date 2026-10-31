@@ -60,9 +60,10 @@
   text-align: center;
 }
 
-/* Dragged to pan; a drag on a diagram never selects its text or scrolls the page. */
+/* Dragged to pan once zoomed; a drag on a diagram never selects its text or scrolls the page. */
 .mermaid > svg {
-  cursor: grab;
+  display: block;
+  margin-inline: auto;
   touch-action: none;
   user-select: none;
 }
