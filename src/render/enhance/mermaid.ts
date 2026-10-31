@@ -77,7 +77,7 @@ async function draw(m: Mermaid, source: string, stage: HTMLElement, spot: HTMLEl
 }
 
 /** Puts a drawing in `figure` with GitHub's controls: zoom in, zoom out, reset, and dragging
- * to pan. A redraw starts the view over. */
+ * to pan a zoomed drawing, whose edges stay outside the frame. A redraw starts the view over. */
 function show(figure: HTMLElement, svg: string): void {
   figure.innerHTML = svg;
   const drawing = figure.querySelector("svg");
@@ -85,8 +85,16 @@ function show(figure: HTMLElement, svg: string): void {
   let scale = 1;
   let x = 0;
   let y = 0;
+  /** How far a side may move: only as far as the scaled drawing overflows its frame. */
+  const reach = (size: number, frame: number) => Math.max(0, (size * scale - frame) / 2);
+  const clamp = (at: number, most: number) => Math.min(most, Math.max(-most, at));
   const apply = () => {
+    const across = reach(drawing.clientWidth, figure.clientWidth);
+    const down = reach(drawing.clientHeight, figure.clientHeight);
+    x = clamp(x, across);
+    y = clamp(y, down);
     drawing.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    drawing.style.cursor = across || down ? "grab" : "";
   };
   const button = (label: string, glyph: string, act: () => void) => {
     const b = document.createElement("button");
