@@ -93,12 +93,12 @@
     transform: none !important;
   }
 
-  /* No page break inside a block that reads as one, nor between a heading and what follows. */
+  /* No page break inside a block that reads as one, nor between a heading and what follows.
+   * Code and tables can be taller than a page, and Chromium (WebView2) moves an unbreakable
+   * block that doesn't fit to a fresh page before splitting it, leaving the page above nearly
+   * empty. So they break between lines or rows instead, keeping three lines on each side. */
   .sheet
     :is(
-      pre,
-      .code-block,
-      table,
       figure,
       img,
       svg[role="img"],
@@ -145,12 +145,12 @@
     border-top: var(--h2-rule);
   }
 
-  /* A table that fits a page stays whole (rule above); one that doesn't breaks between rows. */
+  /* A table breaks between rows, never inside one. */
   .sheet tr {
     break-inside: avoid;
   }
 
-  .sheet :is(p, li, dd) {
+  .sheet :is(p, li, dd, pre) {
     orphans: 3;
     widows: 3;
   }
