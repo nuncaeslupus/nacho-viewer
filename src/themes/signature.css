@@ -8,12 +8,12 @@
 @import "@fontsource-variable/jetbrains-mono/wght-italic.css";
 @import "./styles.css";
 
-/* Arrows and maths signs (← → ↩ ⋮) that Inter and JetBrains Mono don't ship, so every system
+/* Arrows, maths signs and shapes (← → ↩ ⋮ ▶) that Inter and JetBrains Mono don't ship, so every system
  * prints them alike instead of from its own fonts. Each stack names it after its own face. */
 @font-face {
   font-family: "Nacho Symbols";
   src: url("@fontsource/noto-sans-math/files/noto-sans-math-latin-400-normal.woff2") format("woff2");
-  unicode-range: U+2190-22FF;
+  unicode-range: U+2190-22FF, U+25A0-25FF;
 }
 
 :root {
