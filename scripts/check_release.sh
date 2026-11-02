@@ -10,8 +10,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# Every Release must carry one of each: Linux, Windows, then the universal macOS bundles.
-EXPECTED=('*.deb' '*.AppImage' '*.msi' '*-setup.exe' '*.dmg' '*.app.tar.gz')
+# Every Release must carry one of each: Linux, Windows, the universal macOS bundles, then the
+# updater's manifest.
+EXPECTED=('*.deb' '*.AppImage' '*.msi' '*-setup.exe' '*.dmg' '*.app.tar.gz' 'latest.json')
 
 check_version() {
   local want=${1#v}
