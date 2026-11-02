@@ -3,6 +3,7 @@ use crate::document::{self, Document, Svg};
 use crate::error::{ErrorKind, IpcError};
 use crate::export;
 use crate::external;
+use crate::help;
 use crate::image;
 use crate::scope::{self, Scope};
 use crate::updater;
@@ -177,18 +178,23 @@ pub async fn export_pdf<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, AppState>,
     path: String,
+    marks: Vec<export::Mark>,
 ) -> Result<(), IpcError> {
     let path = export::target(lock(&state.export_path).take(), &path)?;
     let window = app
         .get_webview_window("main")
         .ok_or_else(|| IpcError::new(ErrorKind::Io, "no window to export"))?;
-    export::print_to_pdf(&window, &path)
+    export::print_to_pdf(&window, &path, &marks)
 }
 
 /// The print dialog's Preview: the same PDF as Export, in the temp folder, opened in the
 /// system's viewer. Only the name's last component is used, so it cannot leave that folder.
 #[tauri::command]
-pub async fn preview_pdf<R: Runtime>(app: AppHandle<R>, name: String) -> Result<(), IpcError> {
+pub async fn preview_pdf<R: Runtime>(
+    app: AppHandle<R>,
+    name: String,
+    marks: Vec<export::Mark>,
+) -> Result<(), IpcError> {
     let io = |e: String| IpcError::new(ErrorKind::Io, e);
     let file = Path::new(&name)
         .file_name()
@@ -197,7 +203,7 @@ pub async fn preview_pdf<R: Runtime>(app: AppHandle<R>, name: String) -> Result<
     let window = app
         .get_webview_window("main")
         .ok_or_else(|| io("no window to preview".into()))?;
-    export::print_to_pdf(&window, &path)?;
+    export::print_to_pdf(&window, &path, &marks)?;
     app.opener()
         .open_path(path.to_string_lossy(), None::<&str>)
         .map_err(|e| io(e.to_string()))
@@ -213,6 +219,25 @@ pub async fn print_document<R: Runtime>(app: AppHandle<R>) -> Result<bool, IpcEr
     tauri::async_runtime::spawn_blocking(move || export::print_dialog(&window))
         .await
         .map_err(|e| IpcError::new(ErrorKind::Io, e.to_string()))?
+}
+
+/// Writes the guide to the app's data folder and brings it into scope.
+#[tauri::command]
+pub async fn help_file<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+) -> Result<String, IpcError> {
+    let failed = |message: String| IpcError::new(ErrorKind::Io, message);
+    let dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| failed(e.to_string()))?
+        .join("help");
+    let guide = help::write(&dir).map_err(|e| IpcError::from_io(&e, &dir))?;
+    state
+        .open([guide])
+        .pop()
+        .ok_or_else(|| failed("the guide could not be opened".into()))
 }
 
 /// Called once after first paint; a newer version arrives as `update-available`.

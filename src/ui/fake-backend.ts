@@ -1,4 +1,5 @@
 import type { Backend, Config, DocumentChanged, UpdateAvailable } from "./ipc";
+import type { PdfMark } from "./links";
 
 /** Where the fake's `image:` protocol URLs point (Tauri's Windows form, so a browser can route it). */
 export const FAKE_IMAGE_ORIGIN = "http://image.localhost";
@@ -22,6 +23,8 @@ export function fakeBackend(files: Record<string, string>, launch: string[] = []
     } as Config,
     external: [] as string[],
     revealed: [] as string[],
+    /** Where the guide lands; `null` makes `helpFile` fail. */
+    guide: "/data/help/Guide.md" as string | null,
     userCss: null as string | null,
     dialogPaths: [] as string[],
     dialogCalls: 0,
@@ -31,6 +34,7 @@ export function fakeBackend(files: Record<string, string>, launch: string[] = []
     saveNames: [] as string[],
     exported: [] as string[],
     previewed: [] as string[],
+    pdfMarks: [] as PdfMark[],
     /** Calls to the core's print; `printHandled` is what it answers. */
     printed: 0,
     printHandled: false,
@@ -81,11 +85,13 @@ export function fakeBackend(files: Record<string, string>, launch: string[] = []
       state.dialogNear = near;
       return state.savePath;
     },
-    exportPdf: async (path) => {
+    exportPdf: async (path, marks) => {
       state.exported.push(path);
+      state.pdfMarks = marks;
     },
-    previewPdf: async (name) => {
+    previewPdf: async (name, marks) => {
       state.previewed.push(name);
+      state.pdfMarks = marks;
     },
     printDocument: async () => {
       state.printed++;
@@ -127,6 +133,12 @@ export function fakeBackend(files: Record<string, string>, launch: string[] = []
     revealFile: async (path) => {
       state.revealed.push(path);
     },
+    helpFile: async () => {
+      if (state.guide === null) throw { kind: "io", message: "no guide" };
+      files[state.guide] = "# Guide";
+      return state.guide;
+    },
+    appVersion: async () => "1.2.3",
     watch: async (path) => {
       if (state.unwatchable.includes(path)) throw { kind: "io", message: `${path}: no watch` };
       state.watched[path] = (state.watched[path] ?? 0) + 1;

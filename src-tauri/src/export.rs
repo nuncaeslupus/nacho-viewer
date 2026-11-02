@@ -2,8 +2,18 @@
 //! Print uses the same page.
 
 use crate::error::{ErrorKind, IpcError};
+use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use tauri::{Runtime, WebviewWindow};
+
+/// What a link printed to PDF does: opens `uri`, or goes to mark number `to`. A mark with neither
+/// is only somewhere to go to.
+#[derive(Deserialize)]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub struct Mark {
+    pub uri: Option<String>,
+    pub to: Option<usize>,
+}
 
 /// The Save dialog's answer, with `.pdf` added when the user typed a name without it.
 pub fn with_pdf_extension(path: PathBuf) -> PathBuf {
@@ -45,14 +55,28 @@ enum Output<'a> {
     Dialog,
 }
 
-pub fn print_to_pdf<R: Runtime>(window: &WebviewWindow<R>, path: &Path) -> Result<(), IpcError> {
+pub fn print_to_pdf<R: Runtime>(
+    window: &WebviewWindow<R>,
+    path: &Path,
+    marks: &[Mark],
+) -> Result<(), IpcError> {
     #[cfg(target_os = "linux")]
-    return print(window, Output::Pdf(path));
+    {
+        print(window, Output::Pdf(path))?;
+        // The PDF is good without its links, so a failure here does not fail the export.
+        if let Err(e) = crate::pdf_links::add(path, marks) {
+            eprintln!("no links in {}: {e}", path.display());
+        }
+        Ok(())
+    }
     #[cfg(target_os = "macos")]
-    return print_macos(window, path);
+    {
+        let _ = marks;
+        print_macos(window, path)
+    }
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
-        let _ = (window, path);
+        let _ = (window, path, marks);
         Err(IpcError::new(
             ErrorKind::Io,
             "PDF export is not available on this system yet",

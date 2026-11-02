@@ -109,6 +109,17 @@ describe("shell", () => {
     expect(state.exported).toEqual(["/out/notes.pdf"]);
   });
 
+  it("test_export_marks_links_only_while_it_prints", async () => {
+    const source = "[a](https://a.example)";
+    const { root, state } = await open({ "/n/notes.md": source }, ["/n/notes.md"]);
+    state.savePath = "/out/notes.pdf";
+    click(root.querySelector('.bar [data-action="export"]'));
+    click(root.querySelector(".print-dialog .print-save"));
+    for (let i = 0; i < 5; i++) await settle();
+    expect(state.pdfMarks).toEqual([{ uri: "https://a.example" }]);
+    expect(root.querySelector<HTMLElement>(".sheet a")?.style.backgroundColor).toBe("");
+  });
+
   it("test_new_tab_opens_the_open_dialog", async () => {
     const { root, state } = await open({ "/n/a.md": "# A", "/n/b.md": "# B" }, ["/n/a.md"]);
     const labels = () => [...root.querySelectorAll(".tabs .tab-label")].map((l) => l.textContent);
@@ -233,6 +244,38 @@ describe("shell", () => {
     click(root.querySelector(".recent-file"));
     await settle();
     expect(root.querySelector(".tab.active .tab-label")?.textContent).toBe("11.md");
+  });
+
+  it("test_user_guide_opens_as_a_tab_and_stays_out_of_recent_files", async () => {
+    const { root, state } = await open({}, []);
+    press({ key: "F1", shiftKey: true });
+    await vi.waitFor(() => expect(root.querySelector(".tab")).not.toBeNull());
+    await settle();
+    expect(root.querySelector(".sheet h1")?.textContent).toContain("Guide");
+    expect(state.config.recentFiles).toEqual([]);
+  });
+
+  it("test_user_guide_failure_shows_a_notice", async () => {
+    const { root } = await open({}, [], (s) => {
+      s.guide = null;
+    });
+    press({ key: "F1", shiftKey: true });
+    await vi.waitFor(() => expect(notice(root)).toBe(strings.notices.helpFailed));
+  });
+
+  it("test_about_shows_the_version_and_links_to_github", async () => {
+    const { root, state } = await open({}, []);
+    press({ key: "F1", ctrlKey: true });
+    const panel = await vi.waitFor(() => {
+      const found = root.querySelector(".about-dialog");
+      expect(found).not.toBeNull();
+      return found;
+    });
+    expect(panel?.textContent).toContain("Version 1.2.3");
+    click(panel?.querySelector(".print-go") ?? null);
+    expect(state.external).toEqual(["https://github.com/nuncaeslupus/nacho-viewer"]);
+    click(panel?.querySelector(".print-cancel") ?? null);
+    expect(root.querySelector(".about-dialog")).toBeNull();
   });
 
   it("test_recent_files_remove_one_then_clear", async () => {

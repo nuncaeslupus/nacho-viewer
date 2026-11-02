@@ -2,6 +2,7 @@
 // enhance, into `#doc`. `app` starts the real shell on the in-memory core instead. Built only
 // in `--mode e2e`, never into the app.
 import fixture from "../docs/fixtures/all-features.md?raw";
+import guide from "../docs/guide.md?raw";
 import { renderDocument } from "../src/render/document";
 import { fakeBackend } from "../src/ui/fake-backend";
 import type { Config } from "../src/ui/ipc";
@@ -25,6 +26,7 @@ declare global {
   interface Window {
     harness: {
       fixture: string;
+      guide: string;
       big: typeof bigDocument;
       show(source: string): Promise<void>;
       measure(source: string): Promise<Timing>;
@@ -44,6 +46,7 @@ async function render(source: string) {
 
 window.harness = {
   fixture,
+  guide,
   big: bigDocument,
   async show(source) {
     await render(source);

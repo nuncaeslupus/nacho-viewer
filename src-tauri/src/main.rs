@@ -4,7 +4,10 @@ mod document;
 mod error;
 mod export;
 mod external;
+mod help;
 mod image;
+#[cfg(target_os = "linux")]
+mod pdf_links;
 mod scope;
 mod updater;
 mod watch;
@@ -71,6 +74,7 @@ fn main() {
             commands::read_user_css,
             commands::open_external,
             commands::reveal_file,
+            commands::help_file,
             commands::check_update,
             commands::install_update,
         ])

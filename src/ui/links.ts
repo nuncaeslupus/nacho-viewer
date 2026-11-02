@@ -98,6 +98,43 @@ export function findTarget(sheet: Element, fragment: string): Element | null {
   return null;
 }
 
+/** What a link printed to PDF does: opens `uri`, or goes to mark number `to`. */
+export interface PdfMark {
+  uri?: string;
+  to?: number;
+}
+
+/**
+ * WebKitGTK prints no links, so the backend finds these marks in the PDF and links them there:
+ * each link and target gets a background too faint to see, with its index as the colour.
+ * `clear` takes the backgrounds off again.
+ */
+export function markForPdf(sheet: Element): { marks: PdfMark[]; clear(): void } {
+  const marks: PdfMark[] = [];
+  const index = new Map<HTMLElement, number>();
+  const markOf = (el: HTMLElement) => {
+    const known = index.get(el);
+    if (known !== undefined) return known;
+    const i = marks.push({}) - 1;
+    index.set(el, i);
+    el.style.backgroundColor = `rgb(1 ${i >> 8} ${i & 255} / 0.004)`;
+    return i;
+  };
+  for (const link of sheet.querySelectorAll<HTMLElement>("a[href]")) {
+    const href = link.getAttribute("href") ?? "";
+    const kind = linkKind(link);
+    if (kind === "external") marks[markOf(link)].uri = href;
+    const target = kind === "fragment" && findTarget(sheet, href.slice(1));
+    if (target instanceof HTMLElement) marks[markOf(link)].to = markOf(target);
+  }
+  return {
+    marks,
+    clear: () => {
+      for (const el of index.keys()) el.style.removeProperty("background-color");
+    },
+  };
+}
+
 /** A tab's back/forward list, like a browser's: a new entry drops the forward ones. */
 export class History {
   private readonly entries: Entry[];

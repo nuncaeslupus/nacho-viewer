@@ -24,6 +24,7 @@ url = "2"
 # Export prints through WebKitGTK; the versions Tauri already links.
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
+lopdf = { version = "0.46.0", default-features = false }
 webkit2gtk = "2.0"
 
 # Export prints through WKWebView on macOS; the versions Tauri already links.

@@ -1,5 +1,8 @@
 import { expect, test } from "vitest";
 import fixture from "../../docs/fixtures/all-features.md?raw";
+import guide from "../../docs/guide.md?raw";
+import { findTarget } from "../ui/links";
+import { addAnchors } from "./enhance/anchors";
 import { renderMath } from "./enhance/math";
 import { render } from "./pipeline";
 import { sanitize } from "./sanitize";
@@ -113,5 +116,39 @@ test("test_extras_edge_cases", () => {
   for (const src of ["[[https://x/y]]", "[[mailto:a@b.c]]"]) {
     expect(html(src), src).not.toContain(".md");
     expect(html(src), src).not.toContain("wikilink");
+  }
+});
+
+test("test_user_guide_shows_every_construct_and_its_links_land", () => {
+  const el = insert(guide);
+  const constructs = [
+    "table.front-matter",
+    "blockquote",
+    "ol",
+    "ul",
+    "table",
+    "input[type=checkbox]",
+    "del",
+    "mark",
+    "sup:not(.footnote-ref)",
+    "sub",
+    "abbr",
+    "dl",
+    "section.footnotes",
+    "a.wikilink",
+    "details",
+    "kbd",
+    ".math-inline > .katex",
+    ".math-display .katex-display",
+    "code.language-mermaid",
+    "img",
+  ];
+  expect(constructs.filter((selector) => !el.querySelector(selector))).toEqual([]);
+  expect(el.querySelectorAll(".markdown-alert")).toHaveLength(6);
+  expect(el.querySelector(".katex-error")).toBeNull();
+  addAnchors(el);
+  for (const a of el.querySelectorAll<HTMLAnchorElement>("a[href^='#']")) {
+    const fragment = (a.getAttribute("href") ?? "").slice(1);
+    expect(findTarget(el, fragment), fragment).not.toBeNull();
   }
 });

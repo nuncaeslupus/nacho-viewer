@@ -92,6 +92,26 @@ test("test_print_keeps_blocks_whole", async ({ page }) => {
   expect(seen.wrap).toBe("pre-wrap");
 });
 
+test("a wide table does not shrink the printed page", async ({ page }) => {
+  // WebKit scales every page to fit the widest thing, so an overflow makes all the text small.
+  await open(page, "light");
+  await page.setViewportSize({ width: 602, height: 910 });
+  await page.emulateMedia({ media: "print" });
+  const overflow = await page.evaluate(() => {
+    const row = (cell: string) =>
+      `<tr>${Array.from({ length: 7 }, () => `<td>${cell}</td>`).join("")}</tr>`;
+    const url = `<a href="https://a.example">https://a.example/${"long/".repeat(12)}</a>`;
+    document
+      .querySelector(".sheet")
+      ?.insertAdjacentHTML(
+        "beforeend",
+        `<table>${row("Quarter")}${row("113,190.00")}<tr><td colspan="7">${url}</td></tr></table>`,
+      );
+    return document.documentElement.scrollWidth - document.documentElement.clientWidth;
+  });
+  expect(overflow).toBe(0);
+});
+
 test("print keeps headings with their text", async ({ page }) => {
   // WebKit ignores `break-after`, so the fix is a reserved band below each heading, inside
   // `break-inside: avoid`. Playwright cannot paginate WebKit (page.pdf is Chromium-only), so
@@ -188,4 +208,34 @@ test("test_print_draws_diagrams_light", async ({ page }) => {
   expect(printed, "drawn light when print() runs").toEqual({ fills: [light, light], left: 0 });
   // Restored once print() returns, even without `afterprint`.
   await expect.poll(fill).toBe(dark);
+});
+
+test("a diagram moves only as far as it overflows its frame", async ({ page }) => {
+  await open(page, "light");
+  const figure = page.locator(".sheet .mermaid");
+  const svg = figure.locator("> svg");
+  const drag = async () => {
+    const at = await svg.boundingBox();
+    if (!at) throw new Error("no diagram");
+    const [x, y] = [at.x + at.width / 2, at.y + at.height / 2];
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 3000, y + 3000, { steps: 2 });
+    await page.mouse.up();
+  };
+
+  const still = await svg.boundingBox();
+  await drag();
+  expect(await svg.boundingBox()).toEqual(still);
+
+  // Zoomed past the frame, it stops with its edge at the frame's.
+  const zoomIn = figure.locator(".mermaid-controls > button").first();
+  await figure.hover();
+  for (let i = 0; i < 6; i++) await zoomIn.click();
+  await drag();
+  const frame = await figure.boundingBox();
+  const moved = await svg.boundingBox();
+  if (!frame || !moved) throw new Error("no diagram");
+  expect(moved.x).toBeCloseTo(frame.x, 0);
+  expect(moved.y).toBeCloseTo(frame.y, 0);
 });

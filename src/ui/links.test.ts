@@ -3,7 +3,15 @@ import { render } from "../render/pipeline";
 import { sanitize } from "../render/sanitize";
 import { strings } from "../strings";
 import { fakeBackend, gate, settle } from "./fake-backend";
-import { findTarget, type Gesture, History, type LinkAction, resolvePath, route } from "./links";
+import {
+  findTarget,
+  type Gesture,
+  History,
+  type LinkAction,
+  markForPdf,
+  resolvePath,
+  route,
+} from "./links";
 import { Shell } from "./shell";
 
 const shells: Shell[] = [];
@@ -278,5 +286,37 @@ describe("links", () => {
     expect(history.back()?.path).toBe("/b.md");
     expect(history.back()?.path).toBe("/a.md");
     expect(history.back()).toBeNull();
+  });
+});
+
+describe("markForPdf", () => {
+  const sheet = (html: string) => {
+    const el = document.createElement("article");
+    el.innerHTML = html;
+    return el;
+  };
+
+  it("test_marks_give_each_link_its_action", () => {
+    const el = sheet(`
+      <a href="https://a.example" data-external>out</a>
+      <a href="#there">in</a>
+      <a href="#gone">broken</a>
+      <a href="other.md">file</a>
+      <h2 id="there">There</h2>`);
+    const { marks } = markForPdf(el);
+    expect(marks).toEqual([{ uri: "https://a.example" }, { to: 2 }, {}]);
+    expect(el.querySelector("h2")?.style.backgroundColor).toBe("rgba(1, 0, 2, 0.004)");
+  });
+
+  it("test_marks_share_one_for_a_link_that_is_also_a_target", () => {
+    const { marks } = markForPdf(sheet(`<a id="a" href="#b">1</a><a id="b" href="#a">2</a>`));
+    expect(marks).toEqual([{ to: 1 }, { to: 0 }]);
+  });
+
+  it("test_marks_clear_leaves_the_page_as_it_was", () => {
+    const el = sheet(`<a href="#x">in</a><p id="x">x</p>`);
+    markForPdf(el).clear();
+    expect(el.querySelector("a")?.getAttribute("style")).toBe("");
+    expect(el.querySelector("p")?.style.backgroundColor).toBe("");
   });
 });

@@ -24,6 +24,7 @@ export const strings = {
     updateFailed: "The update could not be installed.",
     revealFailed: "The file manager could not be opened.",
     copyFailed: "The path could not be copied.",
+    helpFailed: "The guide could not be opened.",
   },
   // One line at the top of a sheet that keeps showing the last version (live reload).
   fileNotices: {
@@ -70,6 +71,8 @@ export const strings = {
     remoteImages: "Load remote images",
     settings: "Settings…",
     shortcuts: "Keyboard shortcuts",
+    help: "User guide",
+    about: "About Nacho Viewer",
   },
   // Settings lists the three themes, the current one checked; Ctrl+Shift+L moves to the next.
   themes: {
@@ -99,6 +102,13 @@ export const strings = {
     sample: "Aa",
     preview: "Preview",
     cancel: "Cancel",
+  },
+  aboutDialog: {
+    version: (version: string) => `Version ${version}`,
+    tagline: "Markdown, beautifully printed.",
+    license: "Free and open source, under the MIT license.",
+    github: "View on GitHub",
+    close: "Close",
   },
   settingsDialog: {
     title: "Settings",

@@ -18,12 +18,27 @@ async function show(page: Page, source?: string): Promise<string[]> {
 async function drawDiagrams(page: Page): Promise<void> {
   const pending = page.locator("#doc pre.mermaid-pending");
   for (let left = await pending.count(); left > 0; left = await pending.count()) {
-    await pending.first().scrollIntoViewIfNeeded();
+    // A diagram drawn meanwhile leaves the page; the count below sees it.
+    await pending
+      .first()
+      .scrollIntoViewIfNeeded()
+      .catch(() => {});
     await expect(pending).not.toHaveCount(left, { timeout: 10_000 });
   }
   const drawing = page.locator("#doc pre:not(.mermaid-error) > code.language-mermaid");
   await expect(drawing).toHaveCount(0, { timeout: 10_000 });
 }
+
+test("test_user_guide_draws_every_diagram", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/e2e/harness.html");
+  await page.evaluate(() => window.harness.show(window.harness.guide));
+  await drawDiagrams(page);
+  await expect(page.locator("#doc .mermaid > svg")).toHaveCount(5);
+  await expect(page.locator("#doc .mermaid-error")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
 
 test("test_feature_fixture_all_constructs_rendered", async ({ page }) => {
   const errors: string[] = [];

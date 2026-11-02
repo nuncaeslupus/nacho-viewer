@@ -98,6 +98,8 @@ export const actions: Record<ActionId, Action> = {
   remoteImages: { id: "remoteImages", label: a.remoteImages, key: "Ctrl+Shift+M" },
   settings: { id: "settings", label: a.settings, key: "Ctrl+," },
   shortcuts: { id: "shortcuts", label: a.shortcuts, key: "F1" },
+  help: { id: "help", label: a.help, key: "Shift+F1" },
+  about: { id: "about", label: a.about, key: "Ctrl+F1" },
 };
 
 export type BarItem =
@@ -134,7 +136,7 @@ export const menus: ActionId[][] = [
   ["outline", "zoomIn", "zoomOut", "zoomReset", "wideSheet", "find", "viewSource"],
   ["back", "forward", "nextTab", "previousTab"],
   // Theme and remote images are set in Settings; their shortcuts still work from anywhere.
-  ["settings", "shortcuts"],
+  ["settings", "shortcuts", "help", "about"],
 ];
 
 /** What the user can set; window size is remembered by the window-state plugin. */

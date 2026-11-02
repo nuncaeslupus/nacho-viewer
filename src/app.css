@@ -530,6 +530,14 @@ mark.find-match.current {
   font-size: 1.1rem;
 }
 
+.about-dialog p {
+  margin: 0 0 8px;
+}
+
+.about-dialog .print-actions {
+  margin-top: 20px;
+}
+
 .print-sizes {
   display: flex;
   gap: 8px;
