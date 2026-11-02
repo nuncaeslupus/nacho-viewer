@@ -97,16 +97,7 @@
    * Code and tables can be taller than a page, and Chromium (WebView2) moves an unbreakable
    * block that doesn't fit to a fresh page before splitting it, leaving the page above nearly
    * empty. So they break between lines or rows instead, keeping three lines on each side. */
-  .sheet
-    :is(
-      figure,
-      img,
-      svg[role="img"],
-      .math-display,
-      .mermaid,
-      .markdown-alert,
-      blockquote
-    ) {
+  .sheet :is(figure, img, svg[role="img"], .math-display, .mermaid, .markdown-alert, blockquote) {
     break-inside: avoid;
   }
 
