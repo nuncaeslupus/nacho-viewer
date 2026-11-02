@@ -156,6 +156,9 @@ export class Shell {
   private zoom = 100;
   private noticeTimer: ReturnType<typeof setTimeout> | undefined;
   private dialogOpen = false;
+  /** The last PDF saved, so the next Export starts in its folder.
+   * ponytail: forgotten on restart; keep it in Config if that matters. */
+  private lastExport: string | undefined;
   private disposed = false;
   private readonly listeners = new AbortController();
   private unlisten: (() => void)[] = [];
@@ -409,8 +412,10 @@ export class Shell {
     this.applyPrintZoom();
     try {
       const name = basename(pathOf(this.active)).replace(/\.[^.]*$/, "");
-      const path = await this.backend.saveDialog(`${name}.pdf`, this.config?.recentFiles[0]);
+      const near = this.lastExport ?? this.config?.recentFiles[0];
+      const path = await this.backend.saveDialog(`${name}.pdf`, near);
       if (!path) return;
+      this.lastExport = path;
       await this.printToPdf((marks) => this.backend.exportPdf(path, marks));
     } catch {
       this.show(strings.notices.exportFailed);
