@@ -105,3 +105,4 @@
 | D-31 | The Tauri updater is on in every build that can replace itself (AppImage, .msi/.exe, .dmg), including the winget and Homebrew installs, which use the same binaries; the cask declares `auto_updates true`. It is off under Flatpak, Snap and the .deb (apt) | agreed | 2026-10-28 | S-4 |
 | D-32 | Rename before v0: Glossmark becomes **Nacho Viewer** (short name Nacho); a single tortilla-chip mark for the logo. The old `glossmark` settings folder is still read | agreed | 2026-10-29 | S-4 |
 | D-33 | One free universal viewer, no editor (S-3 dropped): Markdown now; images (zoom, fit, rotate and save) and PDF (view; reorder, rotate and delete pages, then save) after v0 as S-5 | agreed | 2026-10-29 | S-5 |
+| D-34 | The command line only turns Markdown into a PDF in the app's look (I-39), besides opening files as today; no other formats (D-20) and no other commands: the app stays a viewer | agreed | 2026-11-02 | S-6 |
