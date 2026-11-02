@@ -1,3 +1,6 @@
+// No console window behind the app on Windows; debug builds keep it for their output.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod commands;
 mod config;
 mod document;
