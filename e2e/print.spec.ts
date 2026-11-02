@@ -78,11 +78,14 @@ test("test_print_keeps_blocks_whole", async ({ page }) => {
       const el = document.querySelector(selector);
       return el && getComputedStyle(el);
     };
-    const blocks = [".sheet pre", ".sheet table", ".sheet .math-display", ".sheet .mermaid"];
+    const blocks = [".sheet .math-display", ".sheet .mermaid"];
     return {
       inside: Object.fromEntries(blocks.map((s) => [s, style(s)?.breakInside ?? null])),
       heading: style(".sheet h2")?.breakAfter,
       wrap: style(".sheet pre")?.whiteSpace,
+      // Code may be taller than a page, so it breaks between lines, three on each side.
+      code: style(".sheet pre")?.breakInside,
+      codeOrphans: style(".sheet pre")?.orphans,
     };
   });
   for (const [selector, value] of Object.entries(seen.inside)) {
@@ -90,6 +93,8 @@ test("test_print_keeps_blocks_whole", async ({ page }) => {
   }
   expect(seen.heading).toBe("avoid");
   expect(seen.wrap).toBe("pre-wrap");
+  expect(seen.code).toBe("auto");
+  expect(seen.codeOrphans).toBe("3");
 });
 
 test("a wide table does not shrink the printed page", async ({ page }) => {
