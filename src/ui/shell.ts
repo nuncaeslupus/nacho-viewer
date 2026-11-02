@@ -8,12 +8,22 @@ import { applyUserCss } from "../themes/user-css";
 import { type ActionId, actions, bar, matchesKey, menus } from "./definition";
 import { clearMatches, highlightMatches } from "./find";
 import { type Backend, type Config, type Doc, type DocumentChanged, errorMessage } from "./ipc";
-import { type Entry, findTarget, type Gesture, History, MARKDOWN, route } from "./links";
+import {
+  type Entry,
+  findTarget,
+  type Gesture,
+  History,
+  MARKDOWN,
+  markForPdf,
+  type PdfMark,
+  route,
+} from "./links";
 import { currentSection, type Section, sections } from "./outline";
 import { restoreScroll, scrollAnchor, watchFile } from "./watch";
 import { clampZoom, sheetLayout, stepZoom } from "./zoom";
 
 const MAX_RECENT_FILES = 10;
+const REPOSITORY = "https://github.com/nuncaeslupus/nacho-viewer";
 const NOTICE_MS = 6000;
 const THEMES = ["system", "light", "dark"] as const;
 const STYLES = Object.keys(strings.styles) as (keyof typeof strings.styles)[];
@@ -110,6 +120,8 @@ export class Shell {
   /** A tab's ▾, or a right-click on it: show its file in the file manager, or copy its path. */
   private readonly fileMenu = h("div", "menu file-menu");
   private fileMenuPath = "";
+  /** The user guide once opened: it stays out of the recent files. */
+  private guidePath = "";
   private readonly notice = h("span", "notice");
   /** The zoom level; a click fits the sheet to the window's width, or returns to 100%. */
   private readonly zoomReadout = h("button", "zoom");
@@ -185,6 +197,8 @@ export class Shell {
     viewSource: () => this.active && this.toggleSource(this.active),
     settings: () => this.openSettings(),
     shortcuts: () => this.toggleShortcuts(),
+    help: () => void this.openGuide(),
+    about: () => void this.openAbout(),
   };
 
   constructor(
@@ -360,18 +374,27 @@ export class Shell {
     }
   }
 
+  /** The sheet made ready for paper, with its links marked, while `print` makes the PDF. */
+  private async printToPdf(print: (marks: PdfMark[]) => Promise<void>): Promise<void> {
+    if (!this.active) return;
+    const back = await diagramsForPaper();
+    const { marks, clear } = markForPdf(this.active.sheet);
+    try {
+      await print(marks);
+    } finally {
+      clear();
+      back();
+    }
+  }
+
   /** The print dialog's Preview: the PDF Export would save, opened in the system viewer. */
   private async previewPdf(): Promise<void> {
     if (this.dialogOpen || !this.active) return;
     this.dialogOpen = true;
     this.applyPrintZoom();
     try {
-      const back = await diagramsForPaper();
-      try {
-        await this.backend.previewPdf(basename(pathOf(this.active)).replace(/\.[^.]*$/, ""));
-      } finally {
-        back();
-      }
+      const name = basename(pathOf(this.active)).replace(/\.[^.]*$/, "");
+      await this.printToPdf((marks) => this.backend.previewPdf(name, marks));
     } catch {
       this.show(strings.notices.previewFailed);
     } finally {
@@ -388,12 +411,7 @@ export class Shell {
       const name = basename(pathOf(this.active)).replace(/\.[^.]*$/, "");
       const path = await this.backend.saveDialog(`${name}.pdf`, this.config?.recentFiles[0]);
       if (!path) return;
-      const back = await diagramsForPaper();
-      try {
-        await this.backend.exportPdf(path);
-      } finally {
-        back();
-      }
+      await this.printToPdf((marks) => this.backend.exportPdf(path, marks));
     } catch {
       this.show(strings.notices.exportFailed);
     } finally {
@@ -884,8 +902,42 @@ export class Shell {
     this.shortcutsPanel = panel;
   }
 
+  /** More › User guide. Not a recent file: its folder would become where the dialogs start. */
+  private async openGuide(): Promise<void> {
+    try {
+      this.guidePath = await this.backend.helpFile();
+      await this.openPaths([this.guidePath]);
+    } catch {
+      this.show(strings.notices.helpFailed);
+    }
+  }
+
+  private async openAbout(): Promise<void> {
+    const version = await this.backend.appVersion();
+    if (this.modal) return;
+    const s = strings.aboutDialog;
+    const panel = h("section", "print-dialog about-dialog");
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+    panel.setAttribute("aria-label", strings.actions.about);
+    const row = h("div", "print-actions");
+    const github = h("button", "print-go", s.github);
+    github.addEventListener("click", () => void this.backend.openExternal(REPOSITORY));
+    const close = h("button", "print-cancel", s.close);
+    close.addEventListener("click", () => this.closeModal());
+    row.append(github, close);
+    panel.append(
+      h("h2", "", strings.appName),
+      h("p", "", s.version(version)),
+      h("p", "", s.tagline),
+      h("p", "", s.license),
+      row,
+    );
+    this.showModal(panel, close);
+  }
+
   private remember(path: string): void {
-    if (!this.config) return;
+    if (!this.config || path === this.guidePath) return;
     const recent = [path, ...this.config.recentFiles.filter((p) => p !== path)];
     this.saveRecent(recent.slice(0, MAX_RECENT_FILES));
   }

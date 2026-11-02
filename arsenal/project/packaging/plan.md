@@ -7,6 +7,8 @@
 **Status**: approved (2026-10-28, revision 1) — without annotations
 **Revision log**:
 - r1 — first draft
+- r1 corrections (2026-11-02), no notes export: names after the rename to Nacho Viewer;
+  `channels.yml` dispatched from `publish`; T7 updates from rc.2; T12 builds from source.
 
 > Review record, kept the way the spec keeps its own: each round of notes bumps
 > **Revision** with a log line naming the `<repo>-plan-v<N>-<date>-notes.md`
@@ -25,15 +27,19 @@ There are two workflows, and each OS is built once:
 - **`release.yml`** runs on a `v*` tag push. It builds Linux, Windows and macOS with
   `tauri-apps/tauri-action`, signs the updater bundles, and attaches everything to a **draft**
   Release. It then runs an install smoke test per OS and un-drafts the Release.
-- **`channels.yml`** runs on `release: published`. It has one job per channel, and each job takes
-  the Release's assets and nothing else:
+- **`channels.yml`** is dispatched by `release.yml`'s `publish` job for stable tags only (a
+  Release published with `GITHUB_TOKEN` triggers no `release: published` run, and a pre-release
+  must not reach the stores). It has one job per channel, and each job takes the Release's assets
+  and nothing else, matched by pattern because asset names follow the product name:
   - **Homebrew tap:** bumps the cask in `nuncaeslupus/homebrew-tap`.
   - **winget:** opens a PR on `microsoft/winget-pkgs` with komac.
   - **apt:** regenerates the signed flat repo on `gh-pages`.
   - **Snap:** repackages the .deb and uploads it to `stable`.
 
-  Flathub is not a job here. Its manifest in `flathub/io.github.nuncaeslupus.glossmark` points at
-  the released .deb, and Flathub's external-data checker opens the bump PR itself.
+  Flathub is not a job here. Flathub builds from source (it does not accept a repackaged .deb),
+  so its manifest in `flathub/io.github.nuncaeslupus.NachoViewer` builds the tagged source, with
+  the metainfo kept upstream. The owner opens the submission PR: Flathub does not take
+  submissions opened or automated by AI tools.
 
 In the app, one Rust module decides whether this install may update itself (D-31). When it may,
 the app checks GitHub once after start-up and tells the frontend that a version is available.
@@ -69,7 +75,7 @@ The More menu then gains "Restart to update to x.y.z". Windows and macOS gain th
 |---------|-------|--------|-------------|
 | GitHub Releases | release assets | CREATE | One Release per tag: bundles, `.sig` files, `latest.json` |
 | `gh-pages` branch | apt repo | UPDATE | `pool/` keeps the last 5 .debs; `Packages`, `Release`, `InRelease` regenerated and signed |
-| `nuncaeslupus/homebrew-tap` | `Casks/glossmark.rb` | UPDATE | Version and sha256 per release |
+| `nuncaeslupus/homebrew-tap` | `Casks/nacho-viewer.rb` | UPDATE | Version and sha256 per release |
 | Actions secrets | repo secrets | CREATE | `TAURI_SIGNING_PRIVATE_KEY(_PASSWORD)`, `APT_GPG_PRIVATE_KEY`, `HOMEBREW_TAP_TOKEN`, `WINGET_TOKEN`, `SNAPCRAFT_STORE_CREDENTIALS` (created by the owner) |
 
 ### Technology choices
@@ -105,12 +111,12 @@ The More menu then gains "Restart to update to x.y.z". Windows and macOS gain th
 | T4 | Export on Windows (D-29): `print_to_pdf` through WebView2 `PrintToPdf`, with A4 portrait and print backgrounds. A Windows CI job builds the code and runs `cargo test` | src-tauri | M | T1 | `export_pdf_pages_delta <= 1` | `test_export_target_rules_hold_on_windows` in `src-tauri/src/export.rs` — the existing `target` tests pass on the Windows runner; the page count is judged by the owner on the fixture |
 | T5 | Export on macOS (D-29): `print_to_pdf` through `WKWebView.printOperation` with `NSPrintSaveJob` to the chosen URL, so the output is paginated. A macOS CI job builds the code and runs `cargo test` | src-tauri | M | T1 | `export_pdf_pages_delta <= 1` | `test_export_target_rules_hold_on_macos` in `src-tauri/src/export.rs` — the existing `target` tests pass on the macOS runner; the page count is judged by the owner on the fixture |
 | T6 | README Install section: Releases per OS, the channel commands, and the unsigned-app steps ("More info › Run anyway"; "Privacy & Security › Open Anyway") | docs | S | — | `readme_install_sections == 3` | `test_readme_names_each_os` in `scripts/check_release.test.sh` — README has an Install heading with Linux, Windows and macOS subsections |
-| T7 | First public Release `v0.1.0`. The owner creates the updater key, tags, and checks an AppImage, .msi and .dmg install by hand, including the self-update from `v0.1.0-rc.1` | release | S | T2, T3, T4, T5, T6 | `owner_install_checks_failed == 0` | Manual: install each bundle on a clean machine, double-click a .md file, update from rc.1; recorded in the Evidence log |
-| T8 | Homebrew tap: create `nuncaeslupus/homebrew-tap` with `Casks/glossmark.rb` (`auto_updates true`, caveats for Open Anyway). A `channels.yml` job bumps the version and sha256 | ci, tap repo | S | T7 | `channel_version_lag_hours <= 72` | `test_cask_matches_release` in `scripts/check_channel.sh` — `brew info --cask nuncaeslupus/tap/glossmark` reports the latest tag |
-| T9 | winget: a komac job in `channels.yml` submits `nuncaeslupus.Glossmark` for each release. The first submission is reviewed by hand | ci | S | T7 | `channel_version_lag_hours <= 72` | `test_winget_matches_release` in `scripts/check_channel.sh` — `winget show nuncaeslupus.Glossmark` (or the winget-pkgs manifest path) lists the latest tag |
+| T7 | First public Release `v0.1.0`. The owner creates the updater key, tags, and checks an AppImage, .msi and .dmg install by hand, including the self-update from `v0.1.0-rc.2` (rc.1 has no updater, and `releases/latest` skips pre-releases) | release | S | T2, T3, T4, T5, T6 | `owner_install_checks_failed == 0` | Manual: install each bundle on a clean machine, double-click a .md file, update from rc.2; recorded in the Evidence log |
+| T8 | Homebrew tap: create `nuncaeslupus/homebrew-tap` with `Casks/nacho-viewer.rb` (`auto_updates true`, caveats for Open Anyway). A `channels.yml` job bumps the version and sha256 | ci, tap repo | S | T7 | `channel_version_lag_hours <= 72` | `test_cask_matches_release` in `scripts/check_channel.sh` — `brew info --cask nuncaeslupus/tap/nacho-viewer` reports the latest tag |
+| T9 | winget: a komac job in `channels.yml` submits `nuncaeslupus.NachoViewer` for each release. The first submission is reviewed by hand | ci | S | T7 | `channel_version_lag_hours <= 72` | `test_winget_matches_release` in `scripts/check_channel.sh` — `winget show nuncaeslupus.NachoViewer` (or the winget-pkgs manifest path) lists the latest tag |
 | T10 | Signed apt repo on `gh-pages`: a job adds the .deb, keeps the last 5, regenerates and signs the index, and the README gives the keyring and `sources` lines | ci | M | T7 | `channel_version_lag_hours <= 72` | `test_apt_repo_signature_verifies` in `scripts/check_channel.sh` — `gpgv` accepts `InRelease` and `Packages` lists the latest version |
-| T11 | Snap: `snap/snapcraft.yaml` (core24, gnome extension, strict, `home` and `removable-media`) repackages the .deb. The owner registers the name `glossmark`, and a job uploads to `stable` | ci | M | T7 | `channel_version_lag_hours <= 72` | `test_snap_matches_release` in `scripts/check_channel.sh` — `snap info glossmark` shows the latest tag on stable |
-| T12 | Flathub: a manifest for `io.github.nuncaeslupus.glossmark` repackaging the .deb, with `x-checker-data`, metainfo and the desktop file. Submitted as a PR to `flathub/flathub` | flathub | M | T7 | `flathub_published == 1` | `test_flathub_lists_app` in `scripts/check_channel.sh` — `flatpak remote-info flathub io.github.nuncaeslupus.glossmark` succeeds |
+| T11 | Snap: `snap/snapcraft.yaml` (core24, gnome extension, strict, `home` and `removable-media`) repackages the .deb. The owner registers the name `nacho-viewer`, and a job uploads to `stable` | ci | M | T7 | `channel_version_lag_hours <= 72` | `test_snap_matches_release` in `scripts/check_channel.sh` — `snap info nacho-viewer` shows the latest tag on stable |
+| T12 | Flathub: a manifest for `io.github.nuncaeslupus.NachoViewer` that builds the tagged source (Flathub does not accept a repackaged .deb), with `x-checker-data`, and metainfo and the desktop file kept upstream. The owner opens the PR to `flathub/flathub` | flathub | M | T7 | `flathub_published == 1` | `test_flathub_lists_app` in `scripts/check_channel.sh` — `flatpak remote-info flathub io.github.nuncaeslupus.NachoViewer` succeeds |
 | T13 | SignPath Foundation: the owner applies with the public repo. Once approved, the Windows job signs the .msi and .exe | ci | S | T7 | `windows_bundles_signed == 2` | `test_windows_bundles_signed` in `scripts/check_release.sh` — `osslsigncode verify` passes on both downloaded Windows bundles |
 
 **Status legend**: ☐ not started · ◐ in progress · ☑ merged

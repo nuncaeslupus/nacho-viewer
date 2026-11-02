@@ -7,9 +7,9 @@
 
 @media print {
   /* Paper reads at book sizes, not screen ones: every size in the theme is rem or em, so
-   * this one value sets Normal's body near 9pt and code near 7.5pt. */
+   * this one value sets Normal's body near 10pt and code near 8.5pt. */
   html {
-    font-size: 8.5pt;
+    font-size: 9pt;
   }
 
   .titlebar,
@@ -68,6 +68,19 @@
     display: table;
     width: auto;
     overflow: visible;
+  }
+
+  /* WebKit shrinks every page to fit the widest thing in the document, so a table too wide for
+   * the paper would make all the text small. Cells are tighter here, and addresses and code,
+   * the long unbroken words in a table, wrap anywhere.
+   * ponytail: a table still too wide shrinks the document; scale that table alone if it matters. */
+  .sheet :is(th, td) {
+    padding: 0.3em 0.4em;
+    font-size: 0.9em;
+  }
+
+  .sheet :is(th, td) :is(a, code) {
+    overflow-wrap: anywhere;
   }
 
   .sheet .math-display {

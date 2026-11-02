@@ -1,0 +1,38 @@
+# The Snap Store package (S-4 T11): the released .deb, repackaged. channels.yml downloads it to
+# nacho-viewer.deb beside this directory and builds this file.
+name: nacho-viewer
+base: core24
+adopt-info: nacho-viewer
+summary: Markdown, beautifully printed
+description: |
+  A free, open-source document viewer that makes .md files read like a well-typeset document
+  instead of plain text. It renders everything GitHub does (GFM, footnotes, alerts, math,
+  Mermaid), with tabs, an outline sidebar, live reload, zoom and print to PDF.
+grade: stable
+confinement: strict
+
+# Tauri's snap guide: WebKitGTK looks for its helper processes at its build-time path.
+layout:
+  /usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/webkit2gtk-4.1:
+    bind: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/webkit2gtk-4.1
+
+apps:
+  nacho-viewer:
+    command: usr/bin/nacho-viewer
+    desktop: usr/share/applications/nacho-viewer.desktop
+    extensions: [gnome]
+    plugs: [home, removable-media, network]
+
+parts:
+  nacho-viewer:
+    plugin: dump
+    source: nacho-viewer.deb
+    source-type: deb
+    stage-packages: [libwebkit2gtk-4.1-0]
+    override-build: |
+      craftctl default
+      craftctl set-version "$(dpkg-deb -f "$CRAFT_PROJECT_DIR/nacho-viewer.deb" Version)"
+      # One name without spaces, and an icon snapd can find inside the snap.
+      cd "$CRAFT_PART_INSTALL/usr/share/applications"
+      mv ./*.desktop nacho-viewer.desktop
+      sed -i 's|^Icon=.*|Icon=${SNAP}/usr/share/icons/hicolor/128x128/apps/nacho-viewer.png|' nacho-viewer.desktop
