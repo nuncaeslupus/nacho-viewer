@@ -258,6 +258,23 @@
 
 .sheet summary {
   cursor: pointer;
+  list-style: none;
+}
+
+/* The disclosure triangle as text in the page's faces: WebKitGTK draws its own marker from a
+ * system font, so it would print differently on each system. */
+.sheet summary::-webkit-details-marker {
+  display: none;
+}
+
+.sheet summary::before {
+  content: "▶";
+  margin-right: 0.5em;
+  font-size: 0.75em;
+}
+
+.sheet details[open] > summary::before {
+  content: "▼";
 }
 
 /* Code */
