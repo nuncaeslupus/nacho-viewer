@@ -56,6 +56,9 @@
 - Heading anchors: appear when hovering their own spot, GitHub's chain icon  (I-36)
 - Body text in sans-serif (owner preference; revisits the serif signature theme, I-21)  (I-37)
 
+### I. Command line (owner, 2026-11-02, after comparing Linux and Windows exports)
+- Export to PDF from the command line, without the window, with the app's look, e.g. `nacho-viewer --export-pdf out.pdf --size small doc.md`: people can script Markdown to PDF, and CI can print the guide on each PR and catch page or font changes. WebKitGTK still needs a display (`xvfb-run` on a server). Only Linux exports from Rust today (`export.rs`); Windows (WebView2 `PrintToPdf`) and macOS (WKWebView `createPDF`) would need it, which also drops the print dialog there. Open: the options (size, document style, user CSS), when drawing is done (diagrams, math, images), exit codes, and what happens with the app already open. The Export dialog's path lock keeps the page from choosing where to write; a path on the command line comes from whoever runs it. After v0.1.0  (I-39)
+
 ## Sub-projects
 
 | ID  | Name                 | Groups | Status    | Spec section |
@@ -65,6 +68,7 @@
 | S-3 | Editing              | C      | dropped   |              |
 | S-4 | Packaging and stores | D      | specified | arsenal/project/packaging/spec.md |
 | S-5 | Images and PDF pages | A      | exploring |              |
+| S-6 | Command-line export  | I      | parked    |              |
 
 ## Decision log
 
