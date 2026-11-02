@@ -1,0 +1,87 @@
+name: channels
+
+# Puts a published Release into the Homebrew tap, the apt repo and the Snap Store (S-4 T8, T10,
+# T11). release.yml's `publish` dispatches it for stable tags only: a Release published with
+# GITHUB_TOKEN triggers no `release` run. Rerun by hand with `gh workflow run channels.yml -f tag=vX.Y.Z`.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, e.g. v0.1.0
+        required: true
+
+concurrency:
+  group: channels-${{ inputs.tag }}
+
+permissions:
+  contents: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  TAG: ${{ inputs.tag }}
+
+jobs:
+  homebrew:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # Asset names change with the product name: match them, never spell them.
+      - run: gh release download "$TAG" --pattern '*.dmg' --dir release
+      - env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          dmg=$(ls release/*.dmg)
+          git clone --depth 1 "https://x-access-token:$TAP_TOKEN@github.com/nuncaeslupus/homebrew-tap" tap
+          mkdir -p tap/Casks
+          sed -e "s|@VERSION@|${TAG#v}|" -e "s|@SHA256@|$(sha256sum "$dmg" | cut -d' ' -f1)|" \
+            -e "s|@DMG@|$(basename "$dmg")|" packaging/homebrew/nacho-viewer.rb >tap/Casks/nacho-viewer.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/nacho-viewer.rb
+          git diff --cached --quiet || { git commit -m "nacho-viewer ${TAG#v}" && git push; }
+
+  apt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: gh release download "$TAG" --pattern '*.deb' --dir release
+      - env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        run: gpg --batch --import <<<"$APT_GPG_PRIVATE_KEY"
+      # The repo lives on gh-pages; the first run creates the branch.
+      - run: |
+          if git fetch --depth 1 origin gh-pages; then
+            git worktree add site FETCH_HEAD
+            git -C site switch -c gh-pages
+          else
+            git worktree add --orphan -b gh-pages site
+          fi
+          bash scripts/apt_repo.sh release/*.deb site
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "apt: nacho-viewer ${TAG#v}"
+          git push origin gh-pages
+
+  snap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          gh release download "$TAG" --pattern '*.deb' --dir release
+          mv release/*.deb nacho-viewer.deb
+      - id: build
+        uses: snapcore/action-build@v1
+      - uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: stable

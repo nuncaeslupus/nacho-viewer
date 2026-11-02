@@ -20,7 +20,7 @@ chmod +x "$FAKE/gh"
 all_assets() {
   printf '%s\n' Nacho.Viewer_0.1.0_amd64.deb Nacho.Viewer_0.1.0_amd64.AppImage \
     Nacho.Viewer_0.1.0_x64_en-US.msi Nacho.Viewer_0.1.0_x64-setup.exe \
-    Nacho.Viewer_0.1.0_universal.dmg Nacho.Viewer_universal.app.tar.gz
+    Nacho.Viewer_0.1.0_universal.dmg Nacho.Viewer_universal.app.tar.gz latest.json
 }
 
 test_release_tag_must_match_version() {

@@ -116,11 +116,17 @@ jobs:
         run: bash scripts/check_release.sh "$GITHUB_REF_NAME" | tee -a "$GITHUB_STEP_SUMMARY"
 
   # Every bundle is present and every install smoke passed: the Release goes public.
+  # A stable tag then goes to the stores (channels.yml); a pre-release stays on GitHub.
   publish:
     needs: [draft, assets]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/${{ needs.draft.outputs.release-id }}" -F draft=false --jq .html_url
+      - run: gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/${{ needs.draft.outputs.release-id }}" -F draft=false --jq .html_url
+      - if: ${{ !contains(github.ref_name, '-') }}
+        run: gh workflow run channels.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag="$GITHUB_REF_NAME"
