@@ -21,6 +21,8 @@ finish-args:
   - --filesystem=home:ro
   # The single-instance plugin's bus name follows the Tauri identifier, not this id.
   - --own-name=io.github.nuncaeslupus.NachoViewer.SingleInstance
+  # Skips host .woff fonts, which hang WebKit's font listing (packaging/flatpak/fonts.conf).
+  - --env=FONTCONFIG_FILE=/app/etc/fonts/fonts.conf
 modules:
   - name: nacho-viewer
     buildsystem: simple
@@ -37,6 +39,7 @@ modules:
       - install -Dm755 src-tauri/target/release/nacho-viewer /app/bin/nacho-viewer
       - install -Dm644 -t /app/share/applications packaging/flatpak/$FLATPAK_ID.desktop
       - install -Dm644 -t /app/share/metainfo packaging/flatpak/$FLATPAK_ID.metainfo.xml
+      - install -Dm644 -t /app/etc/fonts packaging/flatpak/fonts.conf
       - install -Dm644 src-tauri/icons/32x32.png /app/share/icons/hicolor/32x32/apps/$FLATPAK_ID.png
       - install -Dm644 src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/$FLATPAK_ID.png
       - install -Dm644 src-tauri/icons/128x128@2x.png /app/share/icons/hicolor/256x256/apps/$FLATPAK_ID.png
