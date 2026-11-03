@@ -1,0 +1,64 @@
+name: flatpak
+
+# Builds the Flathub package (S-4 T12) offline, as Flathub does. A dispatch stamps the tag into
+# the manifest and uploads it with its generated sources, ready to copy into
+# flathub/io.github.nuncaeslupus.NachoViewer (packaging/flatpak/README.md). A pull request
+# builds its own tree.
+on:
+  pull_request:
+    paths: [packaging/flatpak/**, .github/workflows/flatpak.yml]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, e.g. v0.1.1
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  ID: io.github.nuncaeslupus.NachoViewer
+  TAG: ${{ inputs.tag }}
+  TOOLS: https://github.com/flatpak/flatpak-builder-tools
+  TOOLS_SHA: 9d86d336a39b9af38b86f114b6ce5820fe260f91
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.sha }}
+          path: src
+      - uses: astral-sh/setup-uv@v6
+      - run: |
+          mkdir out
+          curl -fsSLo cargo-gen.py "$TOOLS/raw/$TOOLS_SHA/cargo/flatpak-cargo-generator.py"
+          uv run --no-project --with aiohttp --with tomlkit --with pyyaml cargo-gen.py \
+            src/src-tauri/Cargo.lock -o out/cargo-sources.json
+          uvx --from "git+$TOOLS@$TOOLS_SHA#subdirectory=node" flatpak-node-generator \
+            npm src/package-lock.json -o out/node-sources.json
+      - run: |
+          cp "src/packaging/flatpak/$ID.yml" out/
+          if [ -n "$TAG" ]; then
+            sed -i -e "s|@TAG@|$TAG|" -e "s|@COMMIT@|$(git -C src rev-parse HEAD)|" "out/$ID.yml"
+          else
+            yq -i '.modules[0].sources[0] = {"type": "dir", "path": "../src"}' "out/$ID.yml"
+          fi
+      - run: |
+          sudo apt-get update && sudo apt-get install -y flatpak
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y --noninteractive flathub org.flatpak.Builder
+      - run: flatpak run --command=flatpak-builder-lint org.flatpak.Builder appstream "src/packaging/flatpak/$ID.metainfo.xml"
+      - run: |
+          flatpak run org.flatpak.Builder --user --install-deps-from=flathub --disable-rofiles-fuse \
+            --force-clean --repo=repo build "out/$ID.yml"
+          flatpak build-bundle repo "$ID.flatpak" "$ID"
+      - run: flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo repo
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flathub
+          path: |
+            out/
+            ${{ env.ID }}.flatpak
