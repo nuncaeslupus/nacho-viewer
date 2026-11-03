@@ -3,7 +3,14 @@
 name: nacho-viewer
 base: core24
 adopt-info: nacho-viewer
+title: Nacho Viewer
 summary: Markdown, beautifully printed
+# The store listing takes these on each release; category and screenshots live on the dashboard.
+icon: src-tauri/icons/128x128@2x.png
+license: MIT
+website: https://nuncaeslupus.github.io/nacho-viewer/
+source-code: https://github.com/nuncaeslupus/nacho-viewer
+issues: https://github.com/nuncaeslupus/nacho-viewer/issues
 description: |
   A free, open-source document viewer that makes .md files read like a well-typeset document
   instead of plain text. It renders everything GitHub does (GFM, footnotes, alerts, math,
