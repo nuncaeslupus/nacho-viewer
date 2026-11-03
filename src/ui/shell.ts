@@ -1390,8 +1390,15 @@ export class Shell {
     this.fileMenu.style.top = `${Math.max(0, Math.min(y, innerHeight - height))}px`;
   }
 
-  /** More › Restart to update to x.y.z, in its own section at the end; a later version replaces it. */
+  /** More › Restart to update to x.y.z, in its own section at the end; a later version replaces it.
+   * A dot on ⋮ says it is there, since nothing else does. */
   private offerUpdate(version: string): void {
+    const more = this.menuBar.querySelector<HTMLElement>(".menu-button");
+    if (more) {
+      more.dataset.update = "";
+      more.title = strings.moreUpdate;
+      more.setAttribute("aria-label", strings.moreUpdate);
+    }
     const list = this.menuBar.querySelector(".menu");
     const offered = list?.querySelector('[data-action="update"]');
     if (offered) offered.textContent = strings.restartToUpdate(version);

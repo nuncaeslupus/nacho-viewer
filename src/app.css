@@ -244,6 +244,22 @@ button:disabled {
   font-size: 1rem;
 }
 
+/* An update is waiting in More. */
+.menu-button[data-update] {
+  position: relative;
+}
+
+.menu-button[data-update]::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2f81f7;
+}
+
 .zone {
   display: flex;
   align-items: center;
