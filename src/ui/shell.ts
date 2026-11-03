@@ -32,6 +32,17 @@ const FIND_DEBOUNCE_MS = 100;
 const FIND_LIMIT = 1000;
 /** Zoom keys come in bursts; the level is saved once the reader settles on it. */
 const ZOOM_SAVE_MS = 500;
+/** What to reopen after the remote-images reload, kept only for that reload. */
+const REOPEN = "nacho-viewer.reopen";
+
+function takeReopen(): { paths: string[]; settings: boolean } {
+  try {
+    const saved = sessionStorage.getItem(REOPEN);
+    sessionStorage.removeItem(REOPEN);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return { paths: [], settings: false };
+}
 /** Paper text sizes the print dialog offers; the zoom multiplies the sheet's print font. */
 const PRINT_SIZES = [
   { label: strings.printDialog.small, zoom: 0.85 },
@@ -270,7 +281,9 @@ export class Shell {
       () => this.show(strings.notices.userCssUnavailable),
     );
     this.update();
-    await this.openPaths(await this.backend.takeOpenFiles());
+    const reopen = takeReopen();
+    await this.openPaths([...reopen.paths, ...(await this.backend.takeOpenFiles())]);
+    if (reopen.settings) this.openSettings();
     // After first paint, so the request cannot delay it; offline is no notice (D-31).
     this.backend.checkUpdate().catch(() => {});
   }
@@ -312,7 +325,15 @@ export class Shell {
       return;
     }
     this.config = next;
-    if (on) return this.reloadWindow();
+    if (on) {
+      // The reload would close every tab and the dialog: `start` reopens them (the active tab last).
+      const paths = this.tabs.map(pathOf).filter((path) => path !== this.guidePath);
+      if (this.active && pathOf(this.active) !== this.guidePath) paths.push(pathOf(this.active));
+      try {
+        sessionStorage.setItem(REOPEN, JSON.stringify({ paths, settings: this.modal !== null }));
+      } catch {}
+      return this.reloadWindow();
+    }
     blockRemoteImages(this.root.ownerDocument);
     await Promise.all(this.tabs.map((tab) => this.load(tab, true)));
   }

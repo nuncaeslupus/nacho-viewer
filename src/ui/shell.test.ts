@@ -644,8 +644,17 @@ describe("remote images setting", () => {
       await shell.setRemoteImages(true);
       expect(fake.state.config.remoteImages).toBe(true);
       expect(reloads).toBe(1);
+
+      // The reloaded window reopens the tab, without the launch file being handed over again.
+      const again = fakeBackend({ "/n/a.md": "# A" }, []);
+      const next = new Shell(root, again.backend, () => {});
+      shells.push(next);
+      await next.start();
+      expect(root.querySelectorAll(".tab")).toHaveLength(1);
+      expect(root.querySelector(".sheet h1")?.textContent).toBe("A");
     } finally {
       meta?.remove();
+      sessionStorage.clear();
     }
   });
 
