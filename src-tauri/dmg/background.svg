@@ -1,0 +1,20 @@
+<!-- The dmg window's background: the app at (180,170), Applications at (480,170), as in
+     tauri.conf.json. Rebuild the PNG (2x, 144 dpi so Finder shows it at 660x400) with:
+     inkscape src-tauri/dmg/background.svg -w 1320 -h 800 -o src-tauri/dmg/background.png
+     magick src-tauri/dmg/background.png -units PixelsPerInch -density 144 src-tauri/dmg/background.png -->
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="400" viewBox="0 0 660 400"
+     font-family="Inter" fill="#1f2328">
+  <rect width="660" height="400" fill="#fbf7ee"/>
+  <text x="330" y="52" text-anchor="middle" font-size="19" font-weight="600">Drag Nacho Viewer to Applications</text>
+
+  <!-- A hand-drawn arrow from the app to the folder -->
+  <g fill="none" stroke="#e07f24" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M262 182 C 300 120, 360 120, 398 168"/>
+    <path d="M374 160 L 400 171 L 404 143"/>
+  </g>
+
+  <rect x="40" y="286" width="580" height="88" rx="12" fill="#fff" stroke="#f0d9a8"/>
+  <text x="64" y="316" font-size="13.5" font-weight="600">First launch: macOS says it can't check the app</text>
+  <text x="64" y="340" font-size="13">Nacho Viewer is free and not signed with a paid Apple account. Open it once,</text>
+  <text x="64" y="360" font-size="13">then go to System Settings › Privacy &amp; Security and click Open Anyway.</text>
+</svg>
