@@ -2412,6 +2412,7 @@ name = "nacho-viewer"
 version = "0.1.0"
 dependencies = [
  "dirs",
+ "dunce",
  "gtk",
  "lopdf",
  "notify-debouncer-mini",
