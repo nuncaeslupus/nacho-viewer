@@ -144,4 +144,15 @@ test("test_settings_keeps_page_scrollable_and_takes_arrow_keys", async ({ page }
     "aria-checked",
     "true",
   );
+
+  // Modal: the toolbar sits under the overlay, and a click beside the panel only closes it.
+  const covered = await page.locator(".menu-button").evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return !!document
+      .elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+      ?.closest(".print-overlay");
+  });
+  expect(covered).toBe(true);
+  await page.mouse.click(150, 400);
+  await expect(page.locator(".settings-dialog")).toHaveCount(0);
 });
