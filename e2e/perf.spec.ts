@@ -206,11 +206,15 @@ test("test_mermaid_drawn_when_scrolled_into_view", async ({ page }) => {
   expect(requests.some((url) => /mermaid/i.test(url))).toBe(true);
 });
 
+// It checks where the view lands, not speed: on CI it shares the runner with the 1 MB renders,
+// which took the big document past 10 s.
+const LOAD_MS = 30_000;
+
 test("test_back_to_large_document_keeps_heading_at_top", async ({ page }) => {
   await page.goto("/e2e/shell.html?big");
   const sheet = page.locator(".canvas:not([hidden]) .sheet");
-  await expect(sheet.locator("h2").first()).toBeAttached({ timeout: 10_000 });
-  await expect(sheet.locator(".chunk")).toHaveCount(0, { timeout: 10_000 });
+  await expect(sheet.locator("h2").first()).toBeAttached({ timeout: LOAD_MS });
+  await expect(sheet.locator(".chunk")).toHaveCount(0, { timeout: LOAD_MS });
 
   // Put a heading far down at the top of the view, follow a link, and come back.
   const heading = sheet.locator("h2", { hasText: "Section 300:" });
@@ -228,8 +232,8 @@ test("test_back_to_large_document_keeps_heading_at_top", async ({ page }) => {
   await expect(sheet.locator("h1", { hasText: "Other" })).toBeVisible();
   await page.keyboard.press("Alt+ArrowLeft");
   // The place is restored once the document is laid out in full, and then kept.
-  await expect(heading).toBeAttached({ timeout: 10_000 });
-  await expect(sheet.locator(".chunk")).toHaveCount(0, { timeout: 10_000 });
+  await expect(heading).toBeAttached({ timeout: LOAD_MS });
+  await expect(sheet.locator(".chunk")).toHaveCount(0, { timeout: LOAD_MS });
   await expect.poll(async () => Math.abs((await offset()) - before)).toBeLessThan(10);
   await page.waitForTimeout(500);
   expect(Math.abs((await offset()) - before)).toBeLessThan(10);
