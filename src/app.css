@@ -321,6 +321,8 @@ button:disabled {
 .menu-item::after {
   content: "";
   width: 1em;
+  /* The UI's face, not an item's own (Settings › Style names each style in its faces). */
+  font-family: system-ui, sans-serif;
 }
 
 .menu-item:not(:has(.menu-key))::after {
