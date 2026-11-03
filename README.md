@@ -44,7 +44,7 @@ AppImage, .msi/.exe and .dmg update themselves; the other channels update throug
 
 - **Releases**: the `.deb` (`sudo apt install ./Nacho*Viewer_*.deb`) or the AppImage (`chmod +x`, then run it)
 - **Flathub** (coming soon): `flatpak install flathub io.github.nuncaeslupus.NachoViewer`
-- **Snap** (coming soon): `sudo snap install nacho-viewer`
+- **Snap**: `sudo snap install nacho-viewer`
 - **apt repo**: add the key and the source once, then `sudo apt install nacho-viewer`; updates come with `apt upgrade`
 
   ```bash
