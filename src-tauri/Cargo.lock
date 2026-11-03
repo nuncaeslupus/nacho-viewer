@@ -2412,6 +2412,7 @@ name = "nacho-viewer"
 version = "0.1.0"
 dependencies = [
  "dirs",
+ "dunce",
  "gtk",
  "lopdf",
  "notify-debouncer-mini",
@@ -2431,6 +2432,8 @@ dependencies = [
  "tempfile",
  "url",
  "webkit2gtk",
+ "webview2-com",
+ "windows-core",
 ]
 
 [[package]]

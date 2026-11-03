@@ -10,6 +10,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 dirs = "7"
+dunce = "1"
 notify-debouncer-mini = "0.7"
 percent-encoding = "2"
 serde = { version = "1", features = ["derive"] }
@@ -26,6 +27,11 @@ url = "2"
 gtk = "0.18"
 lopdf = { version = "0.46.0", default-features = false }
 webkit2gtk = "2.0"
+
+# Export prints through WebView2 on Windows; the versions Tauri already links.
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
+windows-core = "0.62"
 
 # Export prints through WKWebView on macOS; the versions Tauri already links.
 [target.'cfg(target_os = "macos")'.dependencies]

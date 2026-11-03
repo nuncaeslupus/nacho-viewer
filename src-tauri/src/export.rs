@@ -74,7 +74,12 @@ pub fn print_to_pdf<R: Runtime>(
         let _ = marks;
         print_macos(window, path)
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(windows)]
+    {
+        let _ = marks;
+        print_windows(window, path)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
     {
         let _ = (window, path, marks);
         Err(IpcError::new(
@@ -228,6 +233,59 @@ fn print_macos<R: Runtime>(window: &WebviewWindow<R>, path: &Path) -> Result<(),
         .map_err(failed)
 }
 
+/// WebView2's `PrintToPdf` (D-29): A4 portrait with backgrounds, the page margins from
+/// `print.css`. Returns once the file is written.
+#[cfg(windows)]
+fn print_windows<R: Runtime>(window: &WebviewWindow<R>, path: &Path) -> Result<(), IpcError> {
+    use webview2_com::Microsoft::Web::WebView2::Win32::{
+        ICoreWebView2Environment6, ICoreWebView2_7, COREWEBVIEW2_PRINT_ORIENTATION_PORTRAIT,
+    };
+    use webview2_com::PrintToPdfCompletedHandler;
+    use windows_core::{Interface, HSTRING};
+
+    let failed = |message: String| IpcError::new(ErrorKind::Io, message);
+    let file = HSTRING::from(path.as_os_str());
+    let shown = path.display().to_string();
+    let (tx, rx) = std::sync::mpsc::channel();
+    window
+        .with_webview(move |webview| {
+            let done = tx.clone();
+            let started = (|| unsafe {
+                let core = webview
+                    .controller()
+                    .CoreWebView2()?
+                    .cast::<ICoreWebView2_7>()?;
+                let settings = webview
+                    .environment()
+                    .cast::<ICoreWebView2Environment6>()?
+                    .CreatePrintSettings()?;
+                settings.SetOrientation(COREWEBVIEW2_PRINT_ORIENTATION_PORTRAIT)?;
+                // A4, in inches.
+                settings.SetPageWidth(8.27)?;
+                settings.SetPageHeight(11.69)?;
+                settings.SetShouldPrintBackgrounds(true)?;
+                settings.SetShouldPrintHeaderAndFooter(false)?;
+                let handler =
+                    PrintToPdfCompletedHandler::create(Box::new(move |result, written| {
+                        let _ = done.send(match result {
+                            Err(e) => Err(e.to_string()),
+                            Ok(()) if !written => Err(format!("{shown} could not be written")),
+                            Ok(()) => Ok(()),
+                        });
+                        Ok(())
+                    }));
+                core.PrintToPdf(&file, &settings, &handler)
+            })();
+            if let Err(e) = started {
+                let _ = tx.send(Err(e.to_string()));
+            }
+        })
+        .map_err(|e| failed(e.to_string()))?;
+    rx.recv()
+        .map_err(|e| failed(e.to_string()))?
+        .map_err(failed)
+}
+
 #[cfg(target_os = "macos")]
 mod macos {
     use objc2::rc::Retained;
@@ -302,6 +360,23 @@ mod tests {
         assert_eq!(
             with_pdf_extension(PathBuf::from("/Users/me/notes")),
             PathBuf::from("/Users/me/notes.pdf")
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn test_export_target_rules_hold_on_windows() {
+        let picked = || Some(PathBuf::from(r"C:\out\notes.pdf"));
+        assert!(target(picked(), r"C:\out\notes.pdf").is_ok());
+        assert!(target(picked(), r"C:\out\other.pdf").is_err());
+        assert!(target(
+            Some(PathBuf::from(r"C:\out\notes.txt")),
+            r"C:\out\notes.txt"
+        )
+        .is_err());
+        assert_eq!(
+            with_pdf_extension(PathBuf::from(r"C:\out\notes")),
+            PathBuf::from(r"C:\out\notes.pdf")
         );
     }
 
