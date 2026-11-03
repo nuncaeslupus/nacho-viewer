@@ -50,7 +50,7 @@ channel_version() {
 # Flathub's gate is only whether the app is listed: its own checker keeps the version current.
 if [ "${1:-}" = flathub ]; then
   published=0
-  get -o /dev/null "https://flathub.org/api/v2/appstream/io.github.nuncaeslupus.NachoViewer" 2>/dev/null &&
+  get -o /dev/null "https://flathub.org/api/v2/appstream/io.github.nuncaeslupus.nacho_viewer.NachoViewer" 2>/dev/null &&
     published=1
   echo "flathub_published=$published"
   [ "$published" -eq 1 ]

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Nacho Viewer
+GenericName=Markdown Viewer
+Comment=Markdown, beautifully printed
+Exec=nacho-viewer %F
+StartupWMClass=nacho-viewer
+Icon=io.github.nuncaeslupus.nacho_viewer.NachoViewer
+Terminal=false
+Categories=Office;Viewer;Utility;
+MimeType=text/markdown;text/x-markdown;
+Keywords=markdown;md;viewer;reader;

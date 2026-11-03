@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.nuncaeslupus.nacho_viewer.NachoViewer</id>
+  <name>Nacho Viewer</name>
+  <summary>Markdown, beautifully printed</summary>
+  <developer id="io.github.nuncaeslupus">
+    <name>nuncaeslupus</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>A free, open-source document viewer that makes Markdown files read like a well-typeset
+      document instead of plain text. It stays a viewer: it never changes your files.</p>
+    <ul>
+      <li>A paper-sheet reading view with book-quality typography, light and dark</li>
+      <li>Everything GitHub renders: tables, footnotes, alerts, emoji, math and Mermaid diagrams</li>
+      <li>Tabs with back and forward, an outline sidebar, find, zoom and live reload</li>
+      <li>Print and export to PDF</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.nuncaeslupus.nacho_viewer.NachoViewer.desktop</launchable>
+  <url type="homepage">https://nuncaeslupus.github.io/nacho-viewer/</url>
+  <url type="bugtracker">https://github.com/nuncaeslupus/nacho-viewer/issues</url>
+  <url type="vcs-browser">https://github.com/nuncaeslupus/nacho-viewer</url>
+  <branding>
+    <color type="primary" scheme_preference="light">#f3ede2</color>
+    <color type="primary" scheme_preference="dark">#1d1a16</color>
+  </branding>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/nuncaeslupus/nacho-viewer/main/docs/screenshot-light.png</image>
+      <caption>A document in light mode</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/nuncaeslupus/nacho-viewer/main/docs/screenshot-dark.png</image>
+      <caption>The same document in dark mode</caption>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <provides>
+    <mediatype>text/markdown</mediatype>
+  </provides>
+  <releases>
+    <release version="0.1.0" date="2026-11-03"/>
+  </releases>
+</component>

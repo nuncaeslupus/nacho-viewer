@@ -1,0 +1,56 @@
+# The Flathub package (S-4 T12), built from the tagged source. Flathub keeps its copy in
+# flathub/io.github.nuncaeslupus.nacho_viewer.NachoViewer with cargo-sources.json and node-sources.json beside
+# it; flatpak.yml stamps the tag in and generates both (packaging/flatpak/README.md).
+id: io.github.nuncaeslupus.nacho_viewer.NachoViewer
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+  - org.freedesktop.Sdk.Extension.node22
+command: nacho-viewer
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # Remote images in documents.
+  - --share=network
+  # A document's relative images and links to sibling files, and live reload, need the
+  # folder it sits in, not only the file the portal hands over. Exports go through the portal.
+  - --filesystem=home:ro
+  # The single-instance plugin's bus name follows the Tauri identifier, not this id.
+  - --own-name=io.github.nuncaeslupus.NachoViewer.SingleInstance
+  # Skips host .woff fonts, which hang WebKit's font listing (packaging/flatpak/fonts.conf).
+  - --env=FONTCONFIG_FILE=/app/etc/fonts/fonts.conf
+modules:
+  - name: nacho-viewer
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/node22/bin
+      env:
+        CARGO_HOME: /run/build/nacho-viewer/cargo
+        CARGO_NET_OFFLINE: 'true'
+        XDG_CACHE_HOME: /run/build/nacho-viewer/flatpak-node/cache
+        npm_config_cache: /run/build/nacho-viewer/flatpak-node/npm-cache
+    build-commands:
+      - npm ci --offline --ignore-scripts
+      - npx tauri build --no-bundle
+      - install -Dm755 src-tauri/target/release/nacho-viewer /app/bin/nacho-viewer
+      - install -Dm644 -t /app/share/applications packaging/flatpak/$FLATPAK_ID.desktop
+      - install -Dm644 -t /app/share/metainfo packaging/flatpak/$FLATPAK_ID.metainfo.xml
+      - install -Dm644 -t /app/etc/fonts packaging/flatpak/fonts.conf
+      - install -Dm644 src-tauri/icons/32x32.png /app/share/icons/hicolor/32x32/apps/$FLATPAK_ID.png
+      - install -Dm644 src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/$FLATPAK_ID.png
+      - install -Dm644 src-tauri/icons/128x128@2x.png /app/share/icons/hicolor/256x256/apps/$FLATPAK_ID.png
+      - install -Dm644 src-tauri/icons/icon.png /app/share/icons/hicolor/512x512/apps/$FLATPAK_ID.png
+    sources:
+      - type: git
+        url: https://github.com/nuncaeslupus/nacho-viewer.git
+        tag: '@TAG@'
+        commit: '@COMMIT@'
+        x-checker-data:
+          type: git
+          tag-pattern: ^v(\d+\.\d+\.\d+)$
+      - cargo-sources.json
+      - node-sources.json
