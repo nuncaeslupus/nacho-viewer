@@ -115,3 +115,33 @@ test("test_mermaid_redrawn_when_theme_changes", async ({ page }) => {
   await expect.poll(fill).not.toBe(light);
   await expect(page.locator(".sheet .mermaid > svg")).toHaveCount(1);
 });
+
+test("test_settings_keeps_page_scrollable_and_takes_arrow_keys", async ({ page }) => {
+  await page.goto("/e2e/shell.html");
+  await expect(page.locator(".sheet h1")).toBeVisible();
+  await page.locator(".menu-button").click();
+  await page.locator(".menu-item[data-action=settings]").click();
+
+  // The wheel beside the panel scrolls the page; the panel stays open.
+  const top = async () => (await page.locator(".sheet h1").boundingBox())?.y ?? 0;
+  const before = await top();
+  await page.mouse.move(150, 400);
+  await page.mouse.wheel(0, 400);
+  await expect.poll(top).toBeLessThan(before);
+  await expect(page.locator(".settings-dialog")).toBeVisible();
+
+  // Focus starts on the current theme; arrows pick within a group, Tab goes to the next one.
+  await expect(page.locator(".settings-dialog [data-theme=system]")).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator(".settings-dialog [data-style=newspaper]")).toBeFocused();
+  await expect(page.locator(".settings-dialog [data-style=newspaper]")).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+});

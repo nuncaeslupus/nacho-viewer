@@ -606,6 +606,12 @@ mark.find-match.current {
   justify-content: flex-end;
   padding: 12px;
   background: none;
+  /* The wheel reaches the page; Done or Esc closes the panel. */
+  pointer-events: none;
+}
+
+.settings-dialog {
+  pointer-events: auto;
 }
 
 /* Choices look like choices here: radio dots for theme and style, a box for images. */
