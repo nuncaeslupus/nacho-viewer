@@ -107,6 +107,11 @@ describe("shell", () => {
     doExport();
     for (let i = 0; i < 5; i++) await settle();
     expect(state.exported).toEqual(["/out/notes.pdf"]);
+
+    // The next Export starts where the last PDF went.
+    doExport();
+    for (let i = 0; i < 5; i++) await settle();
+    expect(state.dialogNear).toBe("/out/notes.pdf");
   });
 
   it("test_export_marks_links_only_while_it_prints", async () => {
