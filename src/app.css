@@ -596,7 +596,53 @@ mark.find-match.current {
 }
 
 .settings-dialog .menu-item {
+  gap: 10px;
   border-radius: 6px;
+}
+
+/* Settings applies each choice at once: a corner panel over the page, which stays visible. */
+.print-overlay:has(.settings-dialog) {
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 12px;
+  background: none;
+}
+
+/* Choices look like choices here: radio dots for theme and style, a box for images. */
+.settings-dialog .menu-item::after {
+  display: none;
+}
+
+.settings-dialog .menu-item::before {
+  content: "";
+  flex: none;
+  align-self: center;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.6;
+}
+
+.settings-dialog .menu-item[aria-checked="true"]::before {
+  background: currentColor;
+  box-shadow: inset 0 0 0 3px var(--menu);
+  opacity: 1;
+}
+
+.settings-dialog [role="checkbox"]::before {
+  border-radius: 4px;
+  font:
+    bold 11px / 13px system-ui,
+    sans-serif;
+  text-align: center;
+}
+
+.settings-dialog [role="checkbox"][aria-checked="true"]::before {
+  content: "✓";
+  background: none;
+  box-shadow: none;
 }
 
 .settings-dialog .print-actions {
