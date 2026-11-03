@@ -45,7 +45,7 @@ pub fn target(picked: Option<PathBuf>, path: &str) -> Result<PathBuf, IpcError> 
 /// WebKitGTK's print operation with "Print to File" settings: no dialog, the same page Print
 /// shows. Returns once the file is written.
 /// The margin on every side of a printed page, matching print.css's `@page`.
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 const PAGE_MARGIN_MM: f64 = 20.0;
 
 /// Where a print goes: a PDF file, or the system print dialog.
@@ -69,12 +69,17 @@ pub fn print_to_pdf<R: Runtime>(
         }
         Ok(())
     }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = marks;
+        print_macos(window, path)
+    }
     #[cfg(windows)]
     {
         let _ = marks;
         print_windows(window, path)
     }
-    #[cfg(not(any(target_os = "linux", windows)))]
+    #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
     {
         let _ = (window, path, marks);
         Err(IpcError::new(
@@ -172,6 +177,62 @@ fn print<R: Runtime>(window: &WebviewWindow<R>, output: Output) -> Result<(), Ip
         .map_err(failed)
 }
 
+/// WKWebView's print operation as a save job to the chosen file (D-29): A4 portrait and paginated,
+/// unlike `createPDF`, which makes one long page. Returns once the file is written.
+#[cfg(target_os = "macos")]
+fn print_macos<R: Runtime>(window: &WebviewWindow<R>, path: &Path) -> Result<(), IpcError> {
+    use objc2::{rc::Retained, sel};
+    use objc2_app_kit::{
+        NSPaperOrientation, NSPrintInfo, NSPrintJobSavingURL, NSPrintSaveJob, NSWindow,
+    };
+    use objc2_foundation::{NSSize, NSURL};
+    use objc2_web_kit::WKWebView;
+
+    let failed = |message: String| IpcError::new(ErrorKind::Io, message);
+    let file = path.to_path_buf();
+    let (tx, rx) = std::sync::mpsc::channel();
+    window
+        .with_webview(move |webview| unsafe {
+            let Some(url) = NSURL::from_file_path(&file) else {
+                let _ = tx.send(Err(format!("{} is not an absolute path", file.display())));
+                return;
+            };
+            let view: &WKWebView = &*webview.inner().cast();
+            let parent: &NSWindow = &*webview.ns_window().cast();
+            let info = NSPrintInfo::new();
+            // A4, in points.
+            info.setPaperSize(NSSize::new(595.28, 841.89));
+            let margin = PAGE_MARGIN_MM * 72.0 / 25.4;
+            info.setTopMargin(margin);
+            info.setBottomMargin(margin);
+            info.setLeftMargin(margin);
+            info.setRightMargin(margin);
+            info.setOrientation(NSPaperOrientation::Portrait);
+            info.setJobDisposition(NSPrintSaveJob);
+            info.dictionary().insert(NSPrintJobSavingURL, &*url);
+            let op = view.printOperationWithPrintInfo(&info);
+            op.setShowsPrintPanel(false);
+            op.setShowsProgressPanel(false);
+            // The operation's view starts with no size, and then prints blank pages.
+            if let Some(printed) = op.view() {
+                printed.setFrame(view.bounds());
+            }
+            // The operation does not retain its delegate: it travels as the context and is
+            // released in the callback.
+            let done = Retained::into_raw(macos::ExportDone::new(tx));
+            op.runOperationModalForWindow_delegate_didRunSelector_contextInfo(
+                parent,
+                Some(&*done),
+                Some(sel!(printOperationDidRun:success:contextInfo:)),
+                done.cast(),
+            );
+        })
+        .map_err(|e| failed(e.to_string()))?;
+    rx.recv()
+        .map_err(|e| failed(e.to_string()))?
+        .map_err(failed)
+}
+
 /// WebView2's `PrintToPdf` (D-29): A4 portrait with backgrounds, the page margins from
 /// `print.css`. Returns once the file is written.
 #[cfg(windows)]
@@ -225,6 +286,44 @@ fn print_windows<R: Runtime>(window: &WebviewWindow<R>, path: &Path) -> Result<(
         .map_err(failed)
 }
 
+#[cfg(target_os = "macos")]
+mod macos {
+    use objc2::rc::Retained;
+    use objc2::runtime::{Bool, NSObject};
+    use objc2::{define_class, msg_send, AllocAnyThread, DeclaredClass};
+    use objc2_app_kit::NSPrintOperation;
+    use std::ffi::c_void;
+    use std::sync::mpsc::Sender;
+
+    define_class!(
+        /// Reports the end of a print operation to the waiting `print_to_pdf`.
+        #[unsafe(super(NSObject))]
+        #[ivars = Sender<Result<(), String>>]
+        pub struct ExportDone;
+
+        impl ExportDone {
+            #[unsafe(method(printOperationDidRun:success:contextInfo:))]
+            fn did_run(&self, _: &NSPrintOperation, success: Bool, context: *mut c_void) {
+                let _ = self.ivars().send(if success.as_bool() {
+                    Ok(())
+                } else {
+                    Err("the PDF could not be written".into())
+                });
+                // SAFETY: `context` is the `Retained::into_raw` of this object.
+                let this = unsafe { Retained::from_raw(context.cast::<Self>()) };
+                let _ = this.map(Retained::autorelease_ptr);
+            }
+        }
+    );
+
+    impl ExportDone {
+        pub fn new(tx: Sender<Result<(), String>>) -> Retained<Self> {
+            let this = Self::alloc().set_ivars(tx);
+            unsafe { msg_send![super(this), init] }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -245,6 +344,23 @@ mod tests {
         );
         assert!(target(picked(), "/etc/other.pdf").is_err());
         assert!(target(None, "/out/notes.pdf").is_err());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_export_target_rules_hold_on_macos() {
+        let picked = || Some(PathBuf::from("/Users/me/notes.pdf"));
+        assert!(target(picked(), "/Users/me/notes.pdf").is_ok());
+        assert!(target(picked(), "/Users/me/other.pdf").is_err());
+        assert!(target(
+            Some(PathBuf::from("/Users/me/notes.PDF")),
+            "/Users/me/notes.PDF"
+        )
+        .is_ok());
+        assert_eq!(
+            with_pdf_extension(PathBuf::from("/Users/me/notes")),
+            PathBuf::from("/Users/me/notes.pdf")
+        );
     }
 
     #[cfg(windows)]
