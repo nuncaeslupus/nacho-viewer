@@ -567,14 +567,21 @@ export class Shell {
     this.update();
   }
 
-  /** Shows `panel` over the page; a click beside it or Esc closes it. */
+  /** Shows `panel` over the whole window; a click beside it or Esc closes it. The wheel still scrolls the page. */
   private showModal(panel: HTMLElement, focus: HTMLElement): void {
     const overlay = h("div", "print-overlay");
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) this.closeModal();
     });
+    overlay.addEventListener(
+      "wheel",
+      (e) => {
+        if (!panel.contains(e.target as Node)) this.active?.canvas.scrollBy(e.deltaX, e.deltaY);
+      },
+      { passive: true },
+    );
     overlay.append(panel);
-    this.view.append(overlay);
+    this.root.append(overlay);
     this.modal = overlay;
     focus.focus();
   }
