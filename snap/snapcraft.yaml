@@ -31,7 +31,7 @@ parts:
     stage-packages: [libwebkit2gtk-4.1-0]
     override-build: |
       craftctl default
-      craftctl set-version "$(dpkg-deb -f "$CRAFT_PROJECT_DIR/nacho-viewer.deb" Version)"
+      craftctl set version="$(dpkg-deb -f "$CRAFT_PROJECT_DIR/nacho-viewer.deb" Version)"
       # One name without spaces, and an icon snapd can find inside the snap.
       cd "$CRAFT_PART_INSTALL/usr/share/applications"
       mv ./*.desktop nacho-viewer.desktop
