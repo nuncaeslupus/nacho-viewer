@@ -32,6 +32,7 @@ export const strings = {
     reloadFailed: "This file could not be reloaded. Showing the last version.",
   },
   more: "More",
+  moreUpdate: "More (update available)",
   windowControls: {
     minimize: "Minimize",
     maximize: "Maximize",

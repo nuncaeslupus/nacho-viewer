@@ -644,8 +644,45 @@ describe("remote images setting", () => {
       await shell.setRemoteImages(true);
       expect(fake.state.config.remoteImages).toBe(true);
       expect(reloads).toBe(1);
+
+      // The reloaded window reopens the tab, without the launch file being handed over again.
+      const again = fakeBackend({ "/n/a.md": "# A" }, []);
+      const next = new Shell(root, again.backend, () => {});
+      shells.push(next);
+      await next.start();
+      expect(root.querySelectorAll(".tab")).toHaveLength(1);
+      expect(root.querySelector(".sheet h1")?.textContent).toBe("A");
     } finally {
       meta?.remove();
+      sessionStorage.clear();
+    }
+  });
+
+  it("test_remote_images_reload_reopens_the_user_guide", async () => {
+    const fake = fakeBackend({ "/n/a.md": "# A" }, ["/n/a.md"]);
+    const root = document.createElement("div");
+    document.body.replaceChildren(root);
+    const shell = new Shell(root, fake.backend, () => {});
+    shells.push(shell);
+    await shell.start();
+    press({ key: "F1", shiftKey: true });
+    await vi.waitFor(() => expect(root.querySelectorAll(".tab")).toHaveLength(2));
+    await settle();
+    await shell.setRemoteImages(false);
+    await shell.setRemoteImages(true);
+    try {
+      // The guide comes back as the active tab, and still not as a recent file.
+      const again = fakeBackend({ "/n/a.md": "# A", "/data/help/Guide.md": "# Guide" }, []);
+      const next = new Shell(root, again.backend, () => {});
+      shells.push(next);
+      await next.start();
+      await settle();
+      expect(root.querySelectorAll(".tab")).toHaveLength(2);
+      expect(root.querySelector(".tab.active .tab-label")?.textContent).toBe("Guide.md");
+      expect(again.state.config.recentFiles).not.toContain("/data/help/Guide.md");
+    } finally {
+      document.head.querySelector('meta[data-remote-images="off"]')?.remove();
+      sessionStorage.clear();
     }
   });
 
@@ -667,9 +704,14 @@ describe("update item", () => {
     expect(state.updateChecks).toBe(1);
     const item = () => root.querySelector<HTMLElement>('.menu [data-action="update"]');
     expect(item()).toBeNull();
+    const more = () => root.querySelector<HTMLElement>(".menu-button");
+    expect(more()?.dataset.update).toBeUndefined();
 
     state.emitUpdateAvailable({ version: "0.1.1" });
     expect(item()?.textContent).toBe(strings.restartToUpdate("0.1.1"));
+    // ⋮ carries the dot and says why.
+    expect(more()?.dataset.update).toBe("");
+    expect(more()?.getAttribute("aria-label")).toBe(strings.moreUpdate);
     click(item());
     await settle();
     expect(state.installs).toBe(1);

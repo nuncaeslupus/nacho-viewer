@@ -32,6 +32,37 @@ const FIND_DEBOUNCE_MS = 100;
 const FIND_LIMIT = 1000;
 /** Zoom keys come in bursts; the level is saved once the reader settles on it. */
 const ZOOM_SAVE_MS = 500;
+/** What to reopen after the remote-images reload, kept only for that reload. */
+const REOPEN = "nacho-viewer.reopen";
+
+const ARROW_STEPS: Record<string, number> = {
+  ArrowDown: 1,
+  ArrowRight: 1,
+  ArrowUp: -1,
+  ArrowLeft: -1,
+};
+
+/** Arrows pick the next or previous choice of a radio group, wrapping, as a native one does. */
+function arrowKeys(group: HTMLElement, items: HTMLElement[]): void {
+  group.addEventListener("keydown", (e) => {
+    const step = ARROW_STEPS[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const at = items.indexOf(e.target as HTMLElement);
+    const next = items[(at + step + items.length) % items.length];
+    next.focus();
+    next.click();
+  });
+}
+
+function takeReopen(): { paths: string[]; guide: string; settings: boolean } {
+  try {
+    const saved = sessionStorage.getItem(REOPEN);
+    sessionStorage.removeItem(REOPEN);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return { paths: [], guide: "", settings: false };
+}
 /** Paper text sizes the print dialog offers; the zoom multiplies the sheet's print font. */
 const PRINT_SIZES = [
   { label: strings.printDialog.small, zoom: 0.85 },
@@ -270,7 +301,10 @@ export class Shell {
       () => this.show(strings.notices.userCssUnavailable),
     );
     this.update();
-    await this.openPaths(await this.backend.takeOpenFiles());
+    const reopen = takeReopen();
+    this.guidePath = reopen.guide;
+    await this.openPaths([...reopen.paths, ...(await this.backend.takeOpenFiles())]);
+    if (reopen.settings) this.openSettings();
     // After first paint, so the request cannot delay it; offline is no notice (D-31).
     this.backend.checkUpdate().catch(() => {});
   }
@@ -312,7 +346,17 @@ export class Shell {
       return;
     }
     this.config = next;
-    if (on) return this.reloadWindow();
+    if (on) {
+      // The reload would close every tab and the dialog: `start` reopens them (the active tab last).
+      // The guide is named too, so it reopens without becoming a recent file.
+      const paths = this.tabs.map(pathOf);
+      if (this.active) paths.push(pathOf(this.active));
+      const reopen = { paths, guide: this.guidePath, settings: this.modal !== null };
+      try {
+        sessionStorage.setItem(REOPEN, JSON.stringify(reopen));
+      } catch {}
+      return this.reloadWindow();
+    }
     blockRemoteImages(this.root.ownerDocument);
     await Promise.all(this.tabs.map((tab) => this.load(tab, true)));
   }
@@ -504,6 +548,8 @@ export class Shell {
       return item;
     });
     styles.append(...this.styleItems);
+    arrowKeys(themes, this.themeItems);
+    arrowKeys(styles, this.styleItems);
 
     const remote = h("button", "menu-item", strings.actions.remoteImages);
     remote.setAttribute("role", "checkbox");
@@ -517,18 +563,25 @@ export class Shell {
     row.append(done);
     panel.append(h("h2", "", s.title), h("h3", "", s.theme), themes, h("h3", "", s.style), styles);
     panel.append(h("h3", "", s.images), remote, row);
-    this.showModal(panel, done);
+    this.showModal(panel, this.themeItems.find((i) => i.dataset.theme === this.theme) ?? done);
     this.update();
   }
 
-  /** Shows `panel` over the page; a click beside it or Esc closes it. */
+  /** Shows `panel` over the whole window; a click beside it or Esc closes it. The wheel still scrolls the page. */
   private showModal(panel: HTMLElement, focus: HTMLElement): void {
     const overlay = h("div", "print-overlay");
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) this.closeModal();
     });
+    overlay.addEventListener(
+      "wheel",
+      (e) => {
+        if (!panel.contains(e.target as Node)) this.active?.canvas.scrollBy(e.deltaX, e.deltaY);
+      },
+      { passive: true },
+    );
     overlay.append(panel);
-    this.view.append(overlay);
+    this.root.append(overlay);
     this.modal = overlay;
     focus.focus();
   }
@@ -1347,8 +1400,15 @@ export class Shell {
     this.fileMenu.style.top = `${Math.max(0, Math.min(y, innerHeight - height))}px`;
   }
 
-  /** More › Restart to update to x.y.z, in its own section at the end; a later version replaces it. */
+  /** More › Restart to update to x.y.z, in its own section at the end; a later version replaces it.
+   * A dot on ⋮ says it is there, since nothing else does. */
   private offerUpdate(version: string): void {
+    const more = this.menuBar.querySelector<HTMLElement>(".menu-button");
+    if (more) {
+      more.dataset.update = "";
+      more.title = strings.moreUpdate;
+      more.setAttribute("aria-label", strings.moreUpdate);
+    }
     const list = this.menuBar.querySelector(".menu");
     const offered = list?.querySelector('[data-action="update"]');
     if (offered) offered.textContent = strings.restartToUpdate(version);
@@ -1488,10 +1548,15 @@ export class Shell {
       );
     }
     this.zoomReadout.textContent = strings.zoomPercent(this.zoom);
-    for (const item of this.themeItems)
+    // Tab stops at the checked choice of each group; arrows move within it (`arrowKeys`).
+    for (const item of this.themeItems) {
       item.setAttribute("aria-checked", String(item.dataset.theme === this.theme));
-    for (const item of this.styleItems)
+      item.tabIndex = item.dataset.theme === this.theme ? 0 : -1;
+    }
+    for (const item of this.styleItems) {
       item.setAttribute("aria-checked", String(item.dataset.style === this.style));
+      item.tabIndex = item.dataset.style === this.style ? 0 : -1;
+    }
     this.remoteItem?.setAttribute("aria-checked", String(this.config?.remoteImages ?? true));
     this.sourceItem?.setAttribute("aria-checked", String(this.active?.source.hidden === false));
   }
