@@ -54,6 +54,8 @@ test("test_feature_fixture_parser_constructs_present", () => {
     const target = a.getAttribute("href") ?? "";
     expect(target.startsWith("#") && el.querySelector(target), target).toBeTruthy();
   }
+  // A plain ↩, without the selector that sent macOS to a system font.
+  expect(el.querySelector(".footnote-backref")?.textContent).toBe("↩");
 
   expect(el.textContent).toContain("Shortcodes become characters: 🎉 😄");
   expect(el.textContent).not.toMatch(/:tada:|:smile:/);
