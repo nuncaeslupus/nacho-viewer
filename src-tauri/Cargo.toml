@@ -10,6 +10,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 dirs = "7"
+dunce = "1"
 notify-debouncer-mini = "0.7"
 percent-encoding = "2"
 serde = { version = "1", features = ["derive"] }

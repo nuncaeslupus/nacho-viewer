@@ -1,6 +1,5 @@
 use crate::error::IpcError;
 use std::collections::HashSet;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 /// What the frontend may read: the files the user opened, and Markdown files under their folders.
@@ -59,14 +58,15 @@ impl Scope {
     }
 }
 
-/// The canonical form of an absolute path, with `..` and symlinks resolved. A missing file
+/// The canonical form of an absolute path, with `..` and symlinks resolved, and on Windows
+/// without the `\\?\` prefix where the plain form means the same file. A missing file
 /// resolves through its parent folder, so it can still be in scope (and then `not_found`).
 pub fn resolve(path: &Path) -> Option<PathBuf> {
     if !path.is_absolute() {
         return None;
     }
-    fs::canonicalize(path).ok().or_else(|| {
-        let parent = fs::canonicalize(path.parent()?).ok()?;
+    dunce::canonicalize(path).ok().or_else(|| {
+        let parent = dunce::canonicalize(path.parent()?).ok()?;
         Some(parent.join(path.file_name()?))
     })
 }
@@ -88,6 +88,23 @@ mod tests {
     use super::*;
     use crate::document::{read_document, read_svg, MAX_SVG_BYTES};
     use crate::error::ErrorKind;
+    use std::fs;
+
+    #[test]
+    fn test_resolve_gives_plain_paths_the_page_can_join() {
+        // On Windows `fs::canonicalize` gives `\\?\C:\…`, which the page turns into `//?/C:/…`
+        // when it resolves an image beside the document.
+        let root = tempfile::tempdir().unwrap();
+        let doc = root.path().join("a.md");
+        fs::write(&doc, "# a").unwrap();
+        for path in [doc.clone(), root.path().join("missing.md")] {
+            let resolved = resolve(&path).unwrap();
+            assert!(
+                !resolved.to_string_lossy().starts_with(r"\\?\"),
+                "{resolved:?}"
+            );
+        }
+    }
 
     #[test]
     fn test_check_document_missing_folder_not_found() {
