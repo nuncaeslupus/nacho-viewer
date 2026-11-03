@@ -12,8 +12,8 @@ from the lockfiles. The desktop file and metainfo stay here and are installed fr
    source lists.
 3. Fork [flathub/flathub](https://github.com/flathub/flathub), make a branch from `new-pr`, put the
    three files from `out/` at its root, and open a pull request against `new-pr`, titled
-   `Add io.github.nuncaeslupus.NachoViewer`.
-4. Answer the reviewers. Once merged, Flathub creates `flathub/io.github.nuncaeslupus.NachoViewer`
+   `Add io.github.nuncaeslupus.nacho_viewer.NachoViewer`.
+4. Answer the reviewers. Once merged, Flathub creates `flathub/io.github.nuncaeslupus.nacho_viewer.NachoViewer`
    and invites you to it.
 
 ## Each release

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.nuncaeslupus.NachoViewer</id>
+  <id>io.github.nuncaeslupus.nacho_viewer.NachoViewer</id>
   <name>Nacho Viewer</name>
   <summary>Markdown, beautifully printed</summary>
   <developer id="io.github.nuncaeslupus">
@@ -18,7 +18,7 @@
       <li>Print and export to PDF</li>
     </ul>
   </description>
-  <launchable type="desktop-id">io.github.nuncaeslupus.NachoViewer.desktop</launchable>
+  <launchable type="desktop-id">io.github.nuncaeslupus.nacho_viewer.NachoViewer.desktop</launchable>
   <url type="homepage">https://nuncaeslupus.github.io/nacho-viewer/</url>
   <url type="bugtracker">https://github.com/nuncaeslupus/nacho-viewer/issues</url>
   <url type="vcs-browser">https://github.com/nuncaeslupus/nacho-viewer</url>

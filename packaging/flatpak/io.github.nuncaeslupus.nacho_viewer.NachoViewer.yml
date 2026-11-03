@@ -1,7 +1,7 @@
 # The Flathub package (S-4 T12), built from the tagged source. Flathub keeps its copy in
-# flathub/io.github.nuncaeslupus.NachoViewer with cargo-sources.json and node-sources.json beside
+# flathub/io.github.nuncaeslupus.nacho_viewer.NachoViewer with cargo-sources.json and node-sources.json beside
 # it; flatpak.yml stamps the tag in and generates both (packaging/flatpak/README.md).
-id: io.github.nuncaeslupus.NachoViewer
+id: io.github.nuncaeslupus.nacho_viewer.NachoViewer
 runtime: org.gnome.Platform
 runtime-version: '51'
 sdk: org.gnome.Sdk
@@ -19,6 +19,8 @@ finish-args:
   # A document's relative images and links to sibling files, and live reload, need the
   # folder it sits in, not only the file the portal hands over. Exports go through the portal.
   - --filesystem=home:ro
+  # The single-instance plugin's bus name follows the Tauri identifier, not this id.
+  - --own-name=io.github.nuncaeslupus.NachoViewer.SingleInstance
 modules:
   - name: nacho-viewer
     buildsystem: simple

@@ -2,8 +2,8 @@ name: flatpak
 
 # Builds the Flathub package (S-4 T12) offline, as Flathub does. A dispatch stamps the tag into
 # the manifest and uploads it with its generated sources, ready to copy into
-# flathub/io.github.nuncaeslupus.NachoViewer (packaging/flatpak/README.md). A pull request
-# builds its own tree.
+# flathub/io.github.nuncaeslupus.nacho_viewer.NachoViewer (packaging/flatpak/README.md).
+# A pull request builds its own tree.
 on:
   pull_request:
     paths: [packaging/flatpak/**, .github/workflows/flatpak.yml]
@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  ID: io.github.nuncaeslupus.NachoViewer
+  ID: io.github.nuncaeslupus.nacho_viewer.NachoViewer
   TAG: ${{ inputs.tag }}
   TOOLS: https://github.com/flatpak/flatpak-builder-tools
   TOOLS_SHA: 9d86d336a39b9af38b86f114b6ce5820fe260f91

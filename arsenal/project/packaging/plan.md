@@ -37,7 +37,7 @@ There are two workflows, and each OS is built once:
   - **Snap:** repackages the .deb and uploads it to `stable`.
 
   Flathub is not a job here. Flathub builds from source (it does not accept a repackaged .deb),
-  so its manifest in `flathub/io.github.nuncaeslupus.NachoViewer` builds the tagged source, with
+  so its manifest in `flathub/io.github.nuncaeslupus.nacho_viewer.NachoViewer` builds the tagged source, with
   the metainfo kept upstream. The owner opens the submission PR: Flathub does not take
   submissions opened or automated by AI tools.
 
@@ -116,7 +116,7 @@ The More menu then gains "Restart to update to x.y.z". Windows and macOS gain th
 | T9 | winget: a komac job in `channels.yml` submits `nuncaeslupus.NachoViewer` for each release. The first submission is reviewed by hand | ci | S | T7 | `channel_version_lag_hours <= 72` | `test_winget_matches_release` in `scripts/check_channel.sh` — `winget show nuncaeslupus.NachoViewer` (or the winget-pkgs manifest path) lists the latest tag |
 | T10 | Signed apt repo on `gh-pages`: a job adds the .deb, keeps the last 5, regenerates and signs the index, and the README gives the keyring and `sources` lines | ci | M | T7 | `channel_version_lag_hours <= 72` | `test_apt_repo_signature_verifies` in `scripts/check_channel.sh` — `gpgv` accepts `InRelease` and `Packages` lists the latest version |
 | T11 | Snap: `snap/snapcraft.yaml` (core24, gnome extension, strict, `home` and `removable-media`) repackages the .deb. The owner registers the name `nacho-viewer`, and a job uploads to `stable` | ci | M | T7 | `channel_version_lag_hours <= 72` | `test_snap_matches_release` in `scripts/check_channel.sh` — `snap info nacho-viewer` shows the latest tag on stable |
-| T12 | Flathub: a manifest for `io.github.nuncaeslupus.NachoViewer` that builds the tagged source (Flathub does not accept a repackaged .deb), with `x-checker-data`, and metainfo and the desktop file kept upstream. The owner opens the PR to `flathub/flathub` | flathub | M | T7 | `flathub_published == 1` | `test_flathub_lists_app` in `scripts/check_channel.sh` — `flatpak remote-info flathub io.github.nuncaeslupus.NachoViewer` succeeds |
+| T12 | Flathub: a manifest for `io.github.nuncaeslupus.nacho_viewer.NachoViewer` that builds the tagged source (Flathub does not accept a repackaged .deb), with `x-checker-data`, and metainfo and the desktop file kept upstream. The owner opens the PR to `flathub/flathub` | flathub | M | T7 | `flathub_published == 1` | `test_flathub_lists_app` in `scripts/check_channel.sh` — `flatpak remote-info flathub io.github.nuncaeslupus.nacho_viewer.NachoViewer` succeeds |
 | T13 | SignPath Foundation: the owner applies with the public repo. Once approved, the Windows job signs the .msi and .exe | ci | S | T7 | `windows_bundles_signed == 2` | `test_windows_bundles_signed` in `scripts/check_release.sh` — `osslsigncode verify` passes on both downloaded Windows bundles |
 
 **Status legend**: ☐ not started · ◐ in progress · ☑ merged
