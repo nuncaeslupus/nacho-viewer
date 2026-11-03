@@ -34,7 +34,15 @@
       { "ext": ["md", "markdown"], "name": "Markdown document", "mimeType": "text/markdown", "role": "Viewer" }
     ],
     "shortDescription": "A Markdown viewer that reads like a well-typeset document",
-    "macOS": { "signingIdentity": "-" },
+    "macOS": {
+      "signingIdentity": "-",
+      "dmg": {
+        "background": "dmg/background.png",
+        "windowSize": { "width": 660, "height": 448 },
+        "appPosition": { "x": 180, "y": 170 },
+        "applicationFolderPosition": { "x": 480, "y": 170 }
+      }
+    },
     "linux": {
       "deb": { "desktopTemplate": "linux/nacho-viewer.desktop" }
     }
