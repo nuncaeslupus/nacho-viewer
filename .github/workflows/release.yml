@@ -53,6 +53,8 @@ jobs:
     env:
       # linuxdeploy is itself an AppImage; the runner has no libfuse2, so extract it instead of mounting.
       APPIMAGE_EXTRACT_AND_RUN: 1
+      # With CI=true Tauri skips the Finder step that lays out the dmg window (background, icons).
+      TAURI_BUNDLER_DMG_IGNORE_CI: "true"
     steps:
       - uses: actions/checkout@v4
       # Same apt workaround as ci.yml: man-db's trigger can stall apt on ubuntu-24.04 runners.
