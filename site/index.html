@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nacho Viewer</title>
+<meta name="description" content="Markdown, beautifully printed. A free, open-source document viewer for Linux, Windows and macOS.">
+<link rel="icon" href="https://raw.githubusercontent.com/nuncaeslupus/nacho-viewer/main/src-tauri/icons/32x32.png">
+<style>
+  :root { --bg: #fbfaf7; --fg: #1d1b18; --muted: #6b665e; --card: #fff; --line: #e6e1d8; --accent: #d9822b; --accent-fg: #fff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #171614; --fg: #ece8e1; --muted: #a39d93; --card: #22201d; --line: #36322d; --accent: #e8973f; --accent-fg: #1a1410; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 48px 16px 64px; }
+  header { display: flex; align-items: center; gap: 16px; }
+  header img { width: 64px; height: 64px; }
+  h1 { margin: 0; font-size: 2.2rem; line-height: 1.1; }
+  .tagline { margin: 4px 0 0; color: var(--muted); font-size: 1.15rem; }
+  .lead { font-size: 1.15rem; max-width: 40em; margin: 28px 0; }
+  .downloads { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 6px; }
+  .downloads a { display: inline-block; padding: 12px 20px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--fg); text-decoration: none; font-weight: 600; }
+  .downloads a.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .version { color: var(--muted); font-size: .9rem; margin: 0 0 36px; }
+  .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 0 40px; }
+  .shots img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); }
+  @media (max-width: 640px) { .shots { grid-template-columns: 1fr; } }
+  h2 { font-size: 1.3rem; margin: 36px 0 12px; }
+  ul { padding-left: 1.2em; }
+  table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  td { padding: 8px 10px 8px 0; border-top: 1px solid var(--line); vertical-align: top; }
+  td:first-child { white-space: nowrap; font-weight: 600; padding-right: 16px; }
+  code { font: .88em ui-monospace, "SF Mono", Consolas, monospace; background: var(--card); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; overflow-wrap: anywhere; }
+  .soon { color: var(--muted); }
+  a { color: var(--accent); }
+  footer { margin-top: 48px; color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="https://raw.githubusercontent.com/nuncaeslupus/nacho-viewer/main/src-tauri/icons/128x128@2x.png" alt="">
+    <div>
+      <h1>Nacho Viewer</h1>
+      <p class="tagline">Markdown, beautifully printed.</p>
+    </div>
+  </header>
+
+  <p class="lead">A free, open-source document viewer for Linux, Windows and macOS that makes
+    <code>.md</code> files read like a well-typeset document instead of plain text.</p>
+
+  <div class="downloads" id="downloads">
+    <a data-os="windows" href="https://github.com/nuncaeslupus/nacho-viewer/releases/latest">Windows</a>
+    <a data-os="mac" href="https://github.com/nuncaeslupus/nacho-viewer/releases/latest">macOS</a>
+    <a data-os="linux" href="https://github.com/nuncaeslupus/nacho-viewer/releases/latest">Linux</a>
+  </div>
+  <p class="version" id="version">Every file is on <a href="https://github.com/nuncaeslupus/nacho-viewer/releases/latest">GitHub Releases</a>.</p>
+
+  <div class="shots">
+    <img src="https://raw.githubusercontent.com/nuncaeslupus/nacho-viewer/main/docs/screenshot-light.png" alt="Nacho Viewer in light mode: tabs, the toolbar, and a typeset document on a paper sheet" loading="lazy">
+    <img src="https://raw.githubusercontent.com/nuncaeslupus/nacho-viewer/main/docs/screenshot-dark.png" alt="The same document in dark mode" loading="lazy">
+  </div>
+
+  <h2>What it does</h2>
+  <ul>
+    <li>A paper-sheet reading view with book-quality typography, light and dark</li>
+    <li>Everything GitHub renders (tables, footnotes, alerts, emoji, math, Mermaid) plus a few extras</li>
+    <li>Tabs, an outline, live reload when the file changes, zoom, and export to PDF</li>
+    <li>It stays a viewer: it never changes your files</li>
+  </ul>
+
+  <h2>Other ways to install</h2>
+  <table>
+    <tr><td>Homebrew</td><td><code>brew install --cask nuncaeslupus/tap/nacho-viewer</code></td></tr>
+    <tr><td>Snap</td><td><code>sudo snap install nacho-viewer</code></td></tr>
+    <tr><td>apt</td><td>See <a href="https://github.com/nuncaeslupus/nacho-viewer#linux">the README</a> for the key and source lines, then <code>sudo apt install nacho-viewer</code></td></tr>
+    <tr class="soon"><td>winget</td><td>Coming soon</td></tr>
+    <tr class="soon"><td>Flathub</td><td>Coming soon</td></tr>
+  </table>
+
+  <h2>First launch</h2>
+  <p>The app is not code-signed yet. On Windows, SmartScreen may warn: click <b>More info → Run anyway</b>.
+    On macOS, open <b>System Settings › Privacy &amp; Security</b> and click <b>Open Anyway</b>.</p>
+
+  <footer>
+    <a href="https://github.com/nuncaeslupus/nacho-viewer">Source on GitHub</a> ·
+    <a href="https://github.com/nuncaeslupus/nacho-viewer/issues">Report a problem</a> ·
+    MIT License
+  </footer>
+</main>
+<script>
+  // Point each button at this system's file in the latest release; the Releases page is the fallback.
+  const pick = { windows: /-setup\.exe$/, mac: /\.dmg$/, linux: /\.AppImage$/ };
+  const ua = navigator.userAgent;
+  const os = /Windows/.test(ua) ? "windows" : /Mac/.test(ua) ? "mac" : /Linux|X11/.test(ua) ? "linux" : null;
+  document.querySelector(`[data-os="${os}"]`)?.classList.add("primary");
+  fetch("https://api.github.com/repos/nuncaeslupus/nacho-viewer/releases/latest")
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((release) => {
+      for (const a of document.querySelectorAll("[data-os]")) {
+        const asset = release.assets.find((x) => pick[a.dataset.os].test(x.name));
+        if (asset) a.href = asset.browser_download_url;
+      }
+      document.getElementById("version").firstChild.textContent = `Version ${release.tag_name.slice(1)}. Every file is on `;
+    })
+    .catch(() => {});
+</script>
+</body>
+</html>

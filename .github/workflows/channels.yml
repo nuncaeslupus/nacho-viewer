@@ -45,6 +45,9 @@ jobs:
   apt:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # pages.yml pushes to gh-pages too.
+    concurrency:
+      group: gh-pages
     permissions:
       contents: write
     steps:
