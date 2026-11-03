@@ -3,6 +3,7 @@
 [![CI](https://github.com/nuncaeslupus/nacho-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/nuncaeslupus/nacho-viewer/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/nuncaeslupus/nacho-viewer?include_prereleases&sort=semver)](https://github.com/nuncaeslupus/nacho-viewer/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Website](https://img.shields.io/badge/website-nuncaeslupus.github.io-d9822b)](https://nuncaeslupus.github.io/nacho-viewer/)
 
 <!-- claude-arsenal:attribution: added by claude-arsenal's /init. Delete this block to drop it (it is not put back), or set `attribution = false` in the arsenal config.toml. -->
 [![Built with claude-arsenal](https://img.shields.io/badge/built%20with-claude--arsenal-d97756)](https://github.com/nuncaeslupus/claude-arsenal)
@@ -44,7 +45,13 @@ AppImage, .msi/.exe and .dmg update themselves; the other channels update throug
 - **Releases**: the `.deb` (`sudo apt install ./Nacho*Viewer_*.deb`) or the AppImage (`chmod +x`, then run it)
 - **Flathub** (coming soon): `flatpak install flathub io.github.nuncaeslupus.NachoViewer`
 - **Snap** (coming soon): `sudo snap install nacho-viewer`
-- **apt repo** (coming soon): add the repo, then `sudo apt install nacho-viewer`
+- **apt repo**: add the key and the source once, then `sudo apt install nacho-viewer`; updates come with `apt upgrade`
+
+  ```bash
+  sudo curl -fsSLo /usr/share/keyrings/nacho-viewer.gpg https://nuncaeslupus.github.io/nacho-viewer/nacho-viewer.gpg
+  echo "deb [signed-by=/usr/share/keyrings/nacho-viewer.gpg] https://nuncaeslupus.github.io/nacho-viewer/ ./" | sudo tee /etc/apt/sources.list.d/nacho-viewer.list
+  sudo apt update && sudo apt install nacho-viewer
+  ```
 
 ### Windows
 
@@ -56,7 +63,7 @@ The app is not code-signed yet, so SmartScreen may warn on first run: click **Mo
 ### macOS
 
 - **Releases**: the `.dmg`; drag Nacho Viewer to Applications
-- **Homebrew** (coming soon): `brew install --cask nuncaeslupus/tap/nacho-viewer`
+- **Homebrew**: `brew install --cask nuncaeslupus/tap/nacho-viewer`
 
 The app is not notarized, so macOS blocks the first launch. Open **System Settings › Privacy &
 Security** and click **Open Anyway**, or run `xattr -dr com.apple.quarantine "/Applications/Nacho Viewer.app"`.
