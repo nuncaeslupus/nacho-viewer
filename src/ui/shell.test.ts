@@ -667,9 +667,14 @@ describe("update item", () => {
     expect(state.updateChecks).toBe(1);
     const item = () => root.querySelector<HTMLElement>('.menu [data-action="update"]');
     expect(item()).toBeNull();
+    const more = () => root.querySelector<HTMLElement>(".menu-button");
+    expect(more()?.dataset.update).toBeUndefined();
 
     state.emitUpdateAvailable({ version: "0.1.1" });
     expect(item()?.textContent).toBe(strings.restartToUpdate("0.1.1"));
+    // ⋮ carries the dot and says why.
+    expect(more()?.dataset.update).toBe("");
+    expect(more()?.getAttribute("aria-label")).toBe(strings.moreUpdate);
     click(item());
     await settle();
     expect(state.installs).toBe(1);
