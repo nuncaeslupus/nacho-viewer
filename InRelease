@@ -1,0 +1,25 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Date: Tue, 03 Nov 2026 18:53:56 +0000
+Label: Nacho Viewer
+Origin: Nacho Viewer
+MD5Sum:
+ f6864ef065f98a277f9fac7f67a43fe3              595 Packages
+ dd91d4bb9223e853c39f7a9292408c18              446 Packages.gz
+SHA1:
+ d110b481bf092dabcf7e550e94ebdeb16de1aa53              595 Packages
+ 509a47665231b803eda4bae64ddc8507d1eeb9d7              446 Packages.gz
+SHA256:
+ 3e2a61873eec3e2cab04556bd2f64aba6de790c3f01c915f3b5fce8455132f07              595 Packages
+ 4ec951f3e991c8386d299152f46b23f9b2f89378334359ba7750a3e9a74dce53              446 Packages.gz
+SHA512:
+ 604c294ff955ad1acc96674b8a958d4203aa3ff67aac16b58677f60a0db58d063e131e4df85492b656d88bb7dfe56a3cf9bfcdcdec317c9ea9d555ffee619c84              595 Packages
+ 76a06b9a0a9c5a4b7a279c301ffe5ca76ab710598d95a73837023596ef3d28a6d234746d866bd256e7c94013a9f8dc2d6aee538d154221311f4743dbf1fdfe68              446 Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iHUEARYKAB0WIQQs7bd/V1/oE1FFLD5lHHQJ93xe7wUCauotxAAKCRBlHHQJ93xe
+7/WDAP0UpNRNleWVHe/tIQpYxtSlDQTw/YI9gtkrKLRWcdcGEgD+JEqLHxPuqbfl
+T15sCmvQR1BrwdMJo7/MWuklxb6OWAs=
+=BaZC
+-----END PGP SIGNATURE-----

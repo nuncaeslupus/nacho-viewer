@@ -1,0 +1,16 @@
+Package: nacho-viewer
+Architecture: amd64
+Version: 0.1.0
+Priority: optional
+Maintainer: github
+Installed-Size: 27712
+Depends: libwebkit2gtk-4.1-0, libgtk-3-0
+Filename: pool/nacho-viewer_0.1.0_amd64.deb
+Size: 11855946
+MD5sum: 62292bfa475b7732e1f2393ce2380cae
+SHA1: 90ef2c8950b34aca98a9f4d3e5fdf6e44245e3e1
+SHA256: 0308119bbf54a7fac2ac573316895ac3fdf9b3ec29c75d2adb2ca38e294fb2a4
+SHA512: 739d371b7a97babc2557a1bc7c98a4e863402a03970967655079faf6f8fa6e011c8a6e9fcd9ebcd204ae6493031fa8f9fcd27bf35e321d884e6201c4a84a2137
+Description: A Markdown viewer that reads like a well-typeset document
+ (none)
+
