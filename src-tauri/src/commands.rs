@@ -26,6 +26,8 @@ pub struct AppState {
     pending: Mutex<Vec<String>>,
     /// The Export dialog's last answer: the only path `export_pdf` writes.
     export_path: Mutex<Option<PathBuf>>,
+    /// The last PDF saved, so the next Export starts in its folder.
+    last_export: Mutex<Option<PathBuf>>,
     config_dir: PathBuf,
 }
 
@@ -58,6 +60,7 @@ impl AppState {
             debouncer: Mutex::new(debouncer),
             pending: Mutex::new(Vec::new()),
             export_path: Mutex::new(None),
+            last_export: Mutex::new(None),
             config_dir,
         })
     }
@@ -161,7 +164,9 @@ pub async fn save_dialog<R: Runtime>(
     if let Some(window) = app.get_webview_window("main") {
         dialog = dialog.set_parent(&window);
     }
-    if let Some(dir) = start_folder(near.as_deref().map(Path::new), app.path().home_dir().ok()) {
+    // ponytail: remembered for this run only; the recent file's folder after a restart.
+    let near = lock(&state.last_export).clone().or(near.map(PathBuf::from));
+    if let Some(dir) = start_folder(near.as_deref(), app.path().home_dir().ok()) {
         dialog = dialog.set_directory(dir);
     }
     let picked = dialog
@@ -169,6 +174,9 @@ pub async fn save_dialog<R: Runtime>(
         .and_then(|p| p.into_path().ok())
         .map(export::with_pdf_extension);
     let shown = picked.as_ref().map(|p| p.display().to_string());
+    if picked.is_some() {
+        lock(&state.last_export).clone_from(&picked);
+    }
     *lock(&state.export_path) = picked;
     Ok(shown)
 }
