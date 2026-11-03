@@ -55,13 +55,13 @@ function arrowKeys(group: HTMLElement, items: HTMLElement[]): void {
   });
 }
 
-function takeReopen(): { paths: string[]; settings: boolean } {
+function takeReopen(): { paths: string[]; guide: string; settings: boolean } {
   try {
     const saved = sessionStorage.getItem(REOPEN);
     sessionStorage.removeItem(REOPEN);
     if (saved) return JSON.parse(saved);
   } catch {}
-  return { paths: [], settings: false };
+  return { paths: [], guide: "", settings: false };
 }
 /** Paper text sizes the print dialog offers; the zoom multiplies the sheet's print font. */
 const PRINT_SIZES = [
@@ -302,6 +302,7 @@ export class Shell {
     );
     this.update();
     const reopen = takeReopen();
+    this.guidePath = reopen.guide;
     await this.openPaths([...reopen.paths, ...(await this.backend.takeOpenFiles())]);
     if (reopen.settings) this.openSettings();
     // After first paint, so the request cannot delay it; offline is no notice (D-31).
@@ -347,10 +348,12 @@ export class Shell {
     this.config = next;
     if (on) {
       // The reload would close every tab and the dialog: `start` reopens them (the active tab last).
-      const paths = this.tabs.map(pathOf).filter((path) => path !== this.guidePath);
-      if (this.active && pathOf(this.active) !== this.guidePath) paths.push(pathOf(this.active));
+      // The guide is named too, so it reopens without becoming a recent file.
+      const paths = this.tabs.map(pathOf);
+      if (this.active) paths.push(pathOf(this.active));
+      const reopen = { paths, guide: this.guidePath, settings: this.modal !== null };
       try {
-        sessionStorage.setItem(REOPEN, JSON.stringify({ paths, settings: this.modal !== null }));
+        sessionStorage.setItem(REOPEN, JSON.stringify(reopen));
       } catch {}
       return this.reloadWindow();
     }
