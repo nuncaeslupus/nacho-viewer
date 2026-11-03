@@ -658,6 +658,34 @@ describe("remote images setting", () => {
     }
   });
 
+  it("test_remote_images_reload_reopens_the_user_guide", async () => {
+    const fake = fakeBackend({ "/n/a.md": "# A" }, ["/n/a.md"]);
+    const root = document.createElement("div");
+    document.body.replaceChildren(root);
+    const shell = new Shell(root, fake.backend, () => {});
+    shells.push(shell);
+    await shell.start();
+    press({ key: "F1", shiftKey: true });
+    await vi.waitFor(() => expect(root.querySelectorAll(".tab")).toHaveLength(2));
+    await settle();
+    await shell.setRemoteImages(false);
+    await shell.setRemoteImages(true);
+    try {
+      // The guide comes back as the active tab, and still not as a recent file.
+      const again = fakeBackend({ "/n/a.md": "# A", "/data/help/Guide.md": "# Guide" }, []);
+      const next = new Shell(root, again.backend, () => {});
+      shells.push(next);
+      await next.start();
+      await settle();
+      expect(root.querySelectorAll(".tab")).toHaveLength(2);
+      expect(root.querySelector(".tab.active .tab-label")?.textContent).toBe("Guide.md");
+      expect(again.state.config.recentFiles).not.toContain("/data/help/Guide.md");
+    } finally {
+      document.head.querySelector('meta[data-remote-images="off"]')?.remove();
+      sessionStorage.clear();
+    }
+  });
+
   it("test_remote_images_setting_not_saved_changes_nothing", async () => {
     const { root, shell, state } = await open({ "/n/a.md": "# A" }, ["/n/a.md"], (s) => {
       s.fail.setConfig = { kind: "io", message: "disk full" };
