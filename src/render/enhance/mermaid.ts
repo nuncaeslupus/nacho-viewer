@@ -170,6 +170,9 @@ function initialize(m: Mermaid): void {
     securityLevel: "strict",
     suppressErrorRendering: true,
     theme: drawnDark ? "dark" : "default",
+    // Mermaid's own default is Trebuchet MS, which each system replaces with a different font.
+    // ponytail: the signature face for every document style; follow --font-body if that matters.
+    fontFamily: '"Inter Variable", "Nacho Symbols", sans-serif',
   });
 }
 

@@ -40,8 +40,8 @@
 /* Newspaper: justified serif columns of text, a big centred headline, a drop cap, and
  * small-capital section heads under a double rule. */
 :root[data-style="newspaper"] {
-  --font-body: "Source Serif 4 Variable", Georgia, serif;
-  --font-heading: "Source Serif 4 Variable", Georgia, serif;
+  --font-body: "Source Serif 4 Variable", "Nacho Symbols", Georgia, serif;
+  --font-heading: "Source Serif 4 Variable", "Nacho Symbols", Georgia, serif;
   --text-size: 1.0625rem;
   --leading: 1.55;
   --heading-weight: 800;
@@ -96,8 +96,8 @@
 
 /* Paper: an academic article. Garamond, a centred title, numbered sections (1, 1.1, …). */
 :root[data-style="paper"] {
-  --font-body: "EB Garamond Variable", Garamond, serif;
-  --font-heading: "EB Garamond Variable", Garamond, serif;
+  --font-body: "EB Garamond Variable", "Nacho Symbols", Garamond, serif;
+  --font-heading: "EB Garamond Variable", "Nacho Symbols", Garamond, serif;
   --text-size: 1.1875rem;
   --leading: 1.5;
   --heading-weight: 600;
@@ -163,8 +163,8 @@
 /* Docs: a product documentation site. A crisp sans, accent-coloured section bars, plain
  * bold links and quotes as tinted callouts. */
 :root[data-style="docs"] {
-  --font-body: "Figtree Variable", system-ui, sans-serif;
-  --font-heading: "Figtree Variable", system-ui, sans-serif;
+  --font-body: "Figtree Variable", "Nacho Symbols", system-ui, sans-serif;
+  --font-heading: "Figtree Variable", "Nacho Symbols", system-ui, sans-serif;
   --text-size: 1.0625rem;
   --leading: 1.7;
   --heading-weight: 700;

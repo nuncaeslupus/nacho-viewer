@@ -87,10 +87,14 @@
     overflow: visible;
   }
 
-  /* A zoomed or panned diagram prints whole, at its drawn size. */
+  /* A zoomed or panned diagram prints whole, at its drawn size, but no taller than fits on a
+   * Letter or A4 page under its heading: a diagram doesn't break, so a taller one leaves its
+   * heading alone at the foot of a page.
+   * ponytail: a fixed 190mm; tie it to the page size if a custom @page ever comes in. */
   .sheet .mermaid > svg {
     /* biome-ignore lint/complexity/noImportantStyles: it must beat the inline transform */
     transform: none !important;
+    max-height: 190mm;
   }
 
   /* No page break inside a block that reads as one, nor between a heading and what follows.
