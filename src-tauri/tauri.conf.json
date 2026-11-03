@@ -19,6 +19,7 @@
   },
   "bundle": {
     "active": true,
+    "publisher": "nuncaeslupus",
     "createUpdaterArtifacts": true,
     "targets": ["deb", "appimage", "msi", "nsis", "dmg", "app"],
     "icon": [
