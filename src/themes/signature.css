@@ -8,10 +8,19 @@
 @import "@fontsource-variable/jetbrains-mono/wght-italic.css";
 @import "./styles.css";
 
+/* Arrows, maths signs and shapes (← → ↩ ⋮ ▶) that Inter and JetBrains Mono don't ship, so every system
+ * prints them alike instead of from its own fonts. Each stack names it after its own face. */
+@font-face {
+  font-family: "Nacho Symbols";
+  src: url("@fontsource/noto-sans-math/files/noto-sans-math-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+2190-22FF, U+25A0-25FF;
+}
+
 :root {
-  --font-body: "Inter Variable", Inter, system-ui, sans-serif;
-  --font-heading: "Inter Variable", Inter, system-ui, sans-serif;
-  --font-code: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+  --font-body: "Inter Variable", Inter, "Nacho Symbols", system-ui, sans-serif;
+  --font-heading: "Inter Variable", Inter, "Nacho Symbols", system-ui, sans-serif;
+  --font-code:
+    "JetBrains Mono Variable", "JetBrains Mono", "Nacho Symbols", ui-monospace, monospace;
   /* The page's rhythm; the document styles (styles.css) change these and the faces. */
   --text-size: 1.0625rem;
   --leading: 1.6;
@@ -249,6 +258,23 @@
 
 .sheet summary {
   cursor: pointer;
+  list-style: none;
+}
+
+/* The disclosure triangle as text in the page's faces: WebKitGTK draws its own marker from a
+ * system font, so it would print differently on each system. */
+.sheet summary::-webkit-details-marker {
+  display: none;
+}
+
+.sheet summary::before {
+  content: "▶";
+  margin-right: 0.5em;
+  font-size: 0.75em;
+}
+
+.sheet details[open] > summary::before {
+  content: "▼";
 }
 
 /* Code */

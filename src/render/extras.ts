@@ -163,6 +163,11 @@ export function extras(md: MarkdownIt): void {
 
   md.renderer.rules.front_matter = (tokens, idx) => frontMatterHtml(md, String(tokens[idx].meta));
 
+  // The back link's ↩ comes with a text-style selector (U+FE0E) that no bundled face has, so
+  // macOS drew the pair from a system font. "Nacho Symbols" already keeps the arrow plain.
+  const backref = md.renderer.rules.footnote_anchor;
+  md.renderer.rules.footnote_anchor = (...args) => backref?.(...args).replace("︎", "") ?? "";
+
   md.inline.ruler.after("escape", "math_inline", mathInline);
   md.block.ruler.before("fence", "math_block", mathBlock, {
     alt: ["paragraph", "reference", "blockquote", "list"],

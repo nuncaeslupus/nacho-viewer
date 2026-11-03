@@ -28,5 +28,10 @@ gtk = "0.18"
 lopdf = { version = "0.46.0", default-features = false }
 webkit2gtk = "2.0"
 
+# Export prints through WebView2 on Windows; the versions Tauri already links.
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
+windows-core = "0.62"
+
 [dev-dependencies]
 tempfile = "3"

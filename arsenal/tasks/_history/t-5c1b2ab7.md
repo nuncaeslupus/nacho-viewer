@@ -7,6 +7,7 @@ deps: [t-8f5ad4b0]
 requires: [access:human]
 tags: [PACKAGING]
 workspace: packaging
+status: merged
 ---
 
 Export on Windows (D-29): `print_to_pdf` through WebView2 `PrintToPdf`, with A4 portrait and print backgrounds. A Windows CI job builds the code and runs `cargo test`

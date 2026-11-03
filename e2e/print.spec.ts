@@ -78,11 +78,14 @@ test("test_print_keeps_blocks_whole", async ({ page }) => {
       const el = document.querySelector(selector);
       return el && getComputedStyle(el);
     };
-    const blocks = [".sheet pre", ".sheet table", ".sheet .math-display", ".sheet .mermaid"];
+    const blocks = [".sheet .math-display", ".sheet .mermaid"];
     return {
       inside: Object.fromEntries(blocks.map((s) => [s, style(s)?.breakInside ?? null])),
       heading: style(".sheet h2")?.breakAfter,
       wrap: style(".sheet pre")?.whiteSpace,
+      // Code may be taller than a page, so it breaks between lines, three on each side.
+      code: style(".sheet pre")?.breakInside,
+      codeOrphans: style(".sheet pre")?.orphans,
     };
   });
   for (const [selector, value] of Object.entries(seen.inside)) {
@@ -90,6 +93,8 @@ test("test_print_keeps_blocks_whole", async ({ page }) => {
   }
   expect(seen.heading).toBe("avoid");
   expect(seen.wrap).toBe("pre-wrap");
+  expect(seen.code).toBe("auto");
+  expect(seen.codeOrphans).toBe("3");
 });
 
 test("a wide table does not shrink the printed page", async ({ page }) => {
@@ -238,4 +243,29 @@ test("a diagram moves only as far as it overflows its frame", async ({ page }) =
   if (!frame || !moved) throw new Error("no diagram");
   expect(moved.x).toBeCloseTo(frame.x, 0);
   expect(moved.y).toBeCloseTo(frame.y, 0);
+});
+
+test("printed guide uses only the app's own fonts", async ({ page, browserName }) => {
+  // A face the system supplies differs on each one and moves the line and page breaks, so the
+  // PDF may name only bundled fonts; colour emoji, too big to bundle, stay the system's.
+  test.skip(browserName !== "chromium", "page.pdf is Chromium-only");
+  await page.addInitScript(() => {
+    window.print = () => document.body.setAttribute("data-printed", "");
+  });
+  await page.goto("/e2e/theme.html?theme=light&guide");
+  await page.locator(".bar-button[data-action=print]").click();
+  await page.locator(".print-dialog .print-go").click();
+  await page.locator("body[data-printed]").waitFor({ state: "attached" });
+  await page.emulateMedia({ media: "print" });
+  const pdf = (await page.pdf()).toString("latin1");
+  const fonts = new Set(
+    [...pdf.matchAll(/\/(?:BaseFont|FontName)\s*\/(?:[A-Z]{6}\+)?([^\s/<>[\]]+)/g)].map(
+      (m) => m[1],
+    ),
+  );
+  expect(fonts.size).toBeGreaterThan(0);
+  const foreign = [...fonts].filter(
+    (f) => !/^(Inter|JetBrainsMono|KaTeX_|NotoSansMath)|Emoji/.test(f),
+  );
+  expect(foreign).toEqual([]);
 });

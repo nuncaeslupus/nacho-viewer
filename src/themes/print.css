@@ -87,26 +87,21 @@
     overflow: visible;
   }
 
-  /* A zoomed or panned diagram prints whole, at its drawn size. */
+  /* A zoomed or panned diagram prints whole, at its drawn size, but no taller than fits on a
+   * Letter or A4 page under its heading: a diagram doesn't break, so a taller one leaves its
+   * heading alone at the foot of a page.
+   * ponytail: a fixed 190mm; tie it to the page size if a custom @page ever comes in. */
   .sheet .mermaid > svg {
     /* biome-ignore lint/complexity/noImportantStyles: it must beat the inline transform */
     transform: none !important;
+    max-height: 190mm;
   }
 
-  /* No page break inside a block that reads as one, nor between a heading and what follows. */
-  .sheet
-    :is(
-      pre,
-      .code-block,
-      table,
-      figure,
-      img,
-      svg[role="img"],
-      .math-display,
-      .mermaid,
-      .markdown-alert,
-      blockquote
-    ) {
+  /* No page break inside a block that reads as one, nor between a heading and what follows.
+   * Code and tables can be taller than a page, and Chromium (WebView2) moves an unbreakable
+   * block that doesn't fit to a fresh page before splitting it, leaving the page above nearly
+   * empty. So they break between lines or rows instead, keeping three lines on each side. */
+  .sheet :is(figure, img, svg[role="img"], .math-display, .mermaid, .markdown-alert, blockquote) {
     break-inside: avoid;
   }
 
@@ -145,12 +140,12 @@
     border-top: var(--h2-rule);
   }
 
-  /* A table that fits a page stays whole (rule above); one that doesn't breaks between rows. */
+  /* A table breaks between rows, never inside one. */
   .sheet tr {
     break-inside: avoid;
   }
 
-  .sheet :is(p, li, dd) {
+  .sheet :is(p, li, dd, pre) {
     orphans: 3;
     widows: 3;
   }
