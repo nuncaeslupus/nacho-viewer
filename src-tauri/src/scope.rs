@@ -58,6 +58,59 @@ impl Scope {
     }
 }
 
+/// Under Flatpak a file the desktop hands over arrives as `/run/flatpak/doc/<id>/<name>`, a
+/// portal copy without its folder. Its real path, when the sandbox can read it (`home:ro`),
+/// brings back the document's images, links and live reload, and the dialogs' start folder.
+pub fn host_path(path: &Path) -> PathBuf {
+    portal_doc_id(path)
+        .and_then(portal_host_path)
+        .filter(|real| real.is_file())
+        .unwrap_or_else(|| path.to_path_buf())
+}
+
+fn portal_doc_id(path: &Path) -> Option<&str> {
+    path.strip_prefix(PORTAL_DOCS).ok()?.iter().next()?.to_str()
+}
+
+const PORTAL_DOCS: &str = "/run/flatpak/doc";
+
+#[cfg(target_os = "linux")]
+fn portal_host_path(id: &str) -> Option<PathBuf> {
+    use gtk::gio;
+    use gtk::glib::{ToVariant, VariantTy};
+    use std::os::unix::ffi::OsStrExt;
+
+    let bus = gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE).ok()?;
+    let reply = bus
+        .call_sync(
+            Some("org.freedesktop.portal.Documents"),
+            "/org/freedesktop/portal/documents",
+            "org.freedesktop.portal.Documents",
+            "GetHostPaths",
+            Some(&(vec![id],).to_variant()),
+            Some(VariantTy::new("(a{say})").ok()?),
+            gio::DBusCallFlags::NONE,
+            1000,
+            gio::Cancellable::NONE,
+        )
+        .ok()?;
+    let (paths,): (std::collections::HashMap<String, Vec<u8>>,) = reply.get()?;
+    // A bytestring: the path with a trailing NUL.
+    let bytes = paths.get(id)?;
+    let bytes = bytes.strip_suffix(&[0]).unwrap_or(bytes);
+    Some(PathBuf::from(std::ffi::OsStr::from_bytes(bytes)))
+}
+
+#[cfg(not(target_os = "linux"))]
+fn portal_host_path(_: &str) -> Option<PathBuf> {
+    None
+}
+
+/// The host cannot see a portal folder, so a dialog must not start in one.
+pub fn is_portal_path(path: &Path) -> bool {
+    path.starts_with(PORTAL_DOCS)
+}
+
 /// The canonical form of an absolute path, with `..` and symlinks resolved, and on Windows
 /// without the `\\?\` prefix where the plain form means the same file. A missing file
 /// resolves through its parent folder, so it can still be in scope (and then `not_found`).
@@ -221,5 +274,17 @@ mod tests {
             assert!(status.success());
             assert_eq!(kind(fifo), ErrorKind::NotPermitted);
         }
+    }
+
+    #[test]
+    fn test_portal_paths_are_recognised_and_others_pass_through() {
+        let doc = Path::new("/run/flatpak/doc/f0c39a09/notes.md");
+        assert_eq!(portal_doc_id(doc), Some("f0c39a09"));
+        assert!(is_portal_path(doc.parent().unwrap()));
+        let plain = Path::new("/home/someone/notes.md");
+        assert_eq!(portal_doc_id(plain), None);
+        assert!(!is_portal_path(plain));
+        assert_eq!(host_path(plain), plain);
+        assert_eq!(portal_doc_id(Path::new("/run/flatpak/docs/x/a.md")), None);
     }
 }
