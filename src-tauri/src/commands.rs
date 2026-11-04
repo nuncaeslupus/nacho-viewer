@@ -120,7 +120,7 @@ pub fn take_open_files(state: State<'_, AppState>) -> OpenFiles {
 /// starts in the process's working directory.
 fn start_folder(near: Option<&Path>, home: Option<PathBuf>) -> Option<PathBuf> {
     near.and_then(Path::parent)
-        .filter(|dir| dir.is_dir())
+        .filter(|dir| dir.is_dir() && !scope::is_portal_path(dir))
         .map(Path::to_path_buf)
         .or(home)
 }
@@ -195,8 +195,9 @@ pub async fn export_pdf<R: Runtime>(
     export::print_to_pdf(&window, &path, &marks)
 }
 
-/// The print dialog's Preview: the same PDF as Export, in the temp folder, opened in the
+/// The print dialog's Preview: the same PDF as Export, in the app's cache folder, opened in the
 /// system's viewer. Only the name's last component is used, so it cannot leave that folder.
+/// Not the temp folder: under Flatpak and Snap it is private, and the host's viewer cannot open it.
 #[tauri::command]
 pub async fn preview_pdf<R: Runtime>(
     app: AppHandle<R>,
@@ -207,7 +208,10 @@ pub async fn preview_pdf<R: Runtime>(
     let file = Path::new(&name)
         .file_name()
         .ok_or_else(|| io(format!("{name} is not a file name")))?;
-    let path = export::with_pdf_extension(std::env::temp_dir().join(file));
+    // ponytail: one PDF per document name stays in the cache; overwritten on the next preview.
+    let dir = app.path().app_cache_dir().map_err(|e| io(e.to_string()))?;
+    std::fs::create_dir_all(&dir).map_err(|e| io(e.to_string()))?;
+    let path = export::with_pdf_extension(dir.join(file));
     let window = app
         .get_webview_window("main")
         .ok_or_else(|| io("no window to preview".into()))?;
@@ -267,7 +271,7 @@ fn open_in_scope<P: AsRef<Path>>(
 ) -> Vec<String> {
     paths
         .into_iter()
-        .filter_map(|p| scope.allow(p.as_ref()))
+        .filter_map(|p| scope.allow(&scope::host_path(p.as_ref())))
         .map(|p| p.display().to_string())
         .collect()
 }
