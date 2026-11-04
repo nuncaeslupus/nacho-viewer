@@ -24,12 +24,13 @@ all_assets() {
 }
 
 test_release_tag_must_match_version() {
+  v=$(sed -n 's/^  "version": "\(.*\)",$/\1/p' src-tauri/tauri.conf.json)
   if bash "$SCRIPT" --version-only v9.9.9 >/dev/null 2>&1; then
-    fail "${FUNCNAME[0]}" "v9.9.9 accepted while the config says 0.1.0"
+    fail "${FUNCNAME[0]}" "v9.9.9 accepted while the config says $v"
   fi
-  bash "$SCRIPT" --version-only v0.1.0 >/dev/null || fail "${FUNCNAME[0]}" "v0.1.0 rejected"
+  bash "$SCRIPT" --version-only "v$v" >/dev/null || fail "${FUNCNAME[0]}" "v$v rejected"
   # A pre-release tag proves the version it precedes.
-  bash "$SCRIPT" --version-only v0.1.0-rc.1 >/dev/null || fail "${FUNCNAME[0]}" "v0.1.0-rc.1 rejected"
+  bash "$SCRIPT" --version-only "v$v-rc.1" >/dev/null || fail "${FUNCNAME[0]}" "v$v-rc.1 rejected"
 }
 
 test_complete_release_has_no_missing_assets() {
