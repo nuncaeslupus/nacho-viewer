@@ -14,3 +14,19 @@ SHA512: 739d371b7a97babc2557a1bc7c98a4e863402a03970967655079faf6f8fa6e011c8a6e9f
 Description: A Markdown viewer that reads like a well-typeset document
  (none)
 
+Package: nacho-viewer
+Architecture: amd64
+Version: 0.1.1
+Priority: optional
+Maintainer: nuncaeslupus
+Installed-Size: 27712
+Depends: libwebkit2gtk-4.1-0, libgtk-3-0
+Filename: pool/nacho-viewer_0.1.1_amd64.deb
+Size: 11855844
+MD5sum: 16d9b4df37a1542cf59f8b1334fae982
+SHA1: 29bec5ad97f38433353bc24363d162929f7b4a98
+SHA256: 0c30adccbf76a29e08f03ecec40dae7810caf0272f40042a5e2baa7d523b0a5f
+SHA512: f624342215fc49ea4e540c762010642d34168cda645f8ed71a6ac3e23aa4d3c7a306d82f22db07b3a20d72248269cd1232ecfea9fdda03d28f80726623a4ef8c
+Description: A Markdown viewer that reads like a well-typeset document
+ (none)
+
