@@ -1,6 +1,6 @@
 [package]
 name = "nacho-viewer"
-version = "0.1.1"
+version = "0.1.2"
 description = "A Markdown viewer that reads like a well-typeset document"
 license = "MIT"
 edition = "2021"
