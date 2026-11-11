@@ -40,7 +40,8 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-DEFAULT_BOTS = ["gemini-code-assist[bot]", "coderabbitai[bot]", "claude[bot]"]
+# Empty: a repo lists its own review bots in `review-bots` (none = CI-only).
+DEFAULT_BOTS: list[str] = []
 
 
 def _resolve_watch_bots(flag: str | None, repo_root: Path | None = None) -> list[str]:
@@ -624,8 +625,7 @@ def main() -> int:
         "--watch-bots",
         help=(
             "comma-separated bot usernames; empty disables bot tracking. "
-            "Defaults to `review-bots` in arsenal/config.toml, else "
-            f"{','.join(DEFAULT_BOTS)}"
+            "Defaults to `review-bots` in arsenal/config.toml, else none (CI-only)"
         ),
     )
     p.add_argument(

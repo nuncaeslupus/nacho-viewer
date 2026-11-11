@@ -24,7 +24,7 @@ being re-derived by hand in every session that merges.
 Input (`--prs PATH|-`): a JSON array of PR records. Unknown keys are ignored,
 so the raw GitHub shapes can be passed through; the keys read are
 
-    number, title, draft, mergeable, created_at, updated_at,
+    number, title, draft, mergeable, mergeable_state, created_at, updated_at,
     head: {sha, ref},
     checks:  [{name, status, conclusion, head_sha}]     — for the head SHA
     reviews: [{state, commit_id, submitted_at, user: {login}}]
@@ -543,12 +543,21 @@ def _github_review_state(pr: dict[str, Any], head: str) -> tuple[str, str]:
     return "clear", f"{len(on_head)} review(s) on the head{caveat}"
 
 
+# GitHub's `mergeable_state` values that block a merge. `blocked` and `unstable`
+# are branch protection's and the checks' verdicts, already read on their own.
+UNMERGEABLE_STATES = frozenset({"behind", "dirty", "unknown"})
+
+
 def _next_action(pr: dict[str, Any], audit: dict[str, Any], policy: str) -> str:
     """The single thing to do next. Ordered by what blocks what."""
     if pr.get("draft"):
         return "mark ready for review (it is a draft)"
-    if pr.get("mergeable") is False:
+    if pr.get("mergeable") is False or pr.get("mergeable_state") == "dirty":
         return "merge the base branch in and resolve the conflict"
+    if pr.get("mergeable_state") == "behind":
+        return "update the branch from base — CI ran on an old base, so the merge is untested"
+    if pr.get("mergeable_state") == "unknown":
+        return "wait — GitHub has not computed mergeability yet; re-run"
 
     ci, ci_detail = audit["ci"], audit["ci_detail"]
     if policy in {"after-ci", "after-ci-and-review"}:
@@ -618,6 +627,7 @@ def audit_pr(
     ready = (
         not pr.get("draft")
         and pr.get("mergeable") is not False
+        and pr.get("mergeable_state") not in UNMERGEABLE_STATES
         and (ci_ok or not needs_ci)
         and (review_ok or not needs_review)
     )
@@ -629,6 +639,7 @@ def audit_pr(
         "branch": _dig(pr, "head", "ref") or "",
         "draft": bool(pr.get("draft")),
         "mergeable": pr.get("mergeable"),
+        "mergeable_state": pr.get("mergeable_state"),
         "age_hours": _age_hours(pr.get("created_at")),
         "idle_hours": _age_hours(pr.get("updated_at") or pr.get("created_at")),
         "ci": ci,
@@ -697,6 +708,8 @@ def render(audits: list[dict[str, Any]], stale: list[dict[str, Any]], policy: st
             lines.append(f"        tier: {a['tier']} → {a['approval']} ({humans})")
         if a["mergeable"] is False:
             lines.append("        mergeable: CONFLICT")
+        elif a.get("mergeable_state") in UNMERGEABLE_STATES:
+            lines.append(f"        mergeable: {a['mergeable_state'].upper()}")
         lines.append(f"        → {a['next_action']}")
     if stale:
         lines.append("")

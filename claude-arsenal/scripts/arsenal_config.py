@@ -210,20 +210,15 @@ SETTINGS: dict[str, Setting] = {
     # by the github skill's query_pr_state.py, which watches for their :eyes:,
     # their line comments and their approval before a PR is callable.
     #
-    # The three shipped here are a starting value, not a claim about your repo:
-    # they are the ones this bundle was exercised against. A repo running a
-    # different reviewer had no way to say so short of passing --watch-bots at
-    # every call, and a repo running none at all had the loop wait for a signal
-    # that was never coming.
-    #
-    # An empty list is the documented way to say "no review bot here": the loop
-    # then runs CI-only, and `ready_to_merge` rests on green CI alone. That is
-    # the weaker gate, which is why it is opt-in rather than the default — a
-    # host that has a bot should not lose it by upgrading.
+    # Empty by default since 5.19.0: a shipped list of vendor bots made every
+    # repo running none of them wait on a signal that was never coming. Empty
+    # means CI-only — `ready_to_merge` rests on green CI alone — so a host with
+    # a bot lists it here (the setup interview asks); `since` is 5.19.0 so an
+    # existing host is told once that the default changed.
     "review-bots": Setting(
-        ["gemini-code-assist[bot]", "coderabbitai[bot]", "claude[bot]"],
-        BASELINE,
-        "Review bots the PR review loop waits on, by GitHub username; empty means CI-only.",
+        [],
+        "5.19.0",
+        "Review bots the PR loop waits on; empty (default since 5.19.0) means CI-only.",
     ),
     # The skills-listing character budget the auditor enforces. It is a real
     # constraint, but its value differs by surface and has changed over time,
@@ -439,15 +434,27 @@ SETTINGS: dict[str, Setting] = {
     "config-acknowledged": Setting(
         "", "5.7.0", "Newest bundle version whose new settings this host has acknowledged."
     ),
+    # Whether the /init setup interview has been answered: the date it was
+    # recorded, or "declined" when the user chose to skip it. Absent, init.py
+    # prints `SETUP INTERVIEW PENDING` on every run, --silent included. It used
+    # to be asked on a first install only, so a host installed before the
+    # interview existed (or one whose first install skipped it) was never asked
+    # at all, and its user repeated the same answers by hand every session.
+    "setup-interview": Setting(
+        "", "5.18.0", 'When the setup interview was answered (YYYY-MM-DD), or "declined".'
+    ),
 }
 
 DEFAULTS: dict[str, Any] = {key: s.default for key, s in SETTINGS.items()}
 
 # Keys the session-start notice never announces: acknowledging is the remedy the
 # notice itself names, so a line telling the host about it would be noise.
-NOTICE_EXEMPT = {"config-acknowledged", "home"}
+# `setup-interview` has its own, louder line (SETUP INTERVIEW PENDING), so a
+# NEW SETTING line for it would say the same thing twice.
+NOTICE_EXEMPT = {"config-acknowledged", "home", "setup-interview"}
 
 VERSION_REGEX = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+SETUP_INTERVIEW_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 ENUMS: dict[str, set[str]] = {
     # `after-review` is not a weaker `after-ci-and-review` — it is the other
@@ -525,6 +532,7 @@ READERS = {
     "review.approval-high": "plugins/core/skills/init/assets/scripts/review_policy.py",
     # Read here, by new_settings() below; init.py prints what it returns.
     "config-acknowledged": "plugins/core/skills/init/assets/scripts/arsenal_config.py",
+    "setup-interview": "plugins/core/skills/init/scripts/init.py",
     # `home` is the exception, and the only one: it names the directory holding
     # config.toml, so it cannot be read from config.toml. ARSENAL_HOME is the
     # channel, and FILE_ONLY_REJECTS below refuses the key in the file rather
@@ -734,6 +742,16 @@ def load(repo_root: Path | None = None) -> tuple[dict[str, Any], dict[str, str]]
         raise ConfigError(
             f'config-acknowledged must be a version like "5.7.0", got {ack!r} '
             f"(from {sources['config-acknowledged']})"
+        )
+    # Quoted in the file: a bare TOML date (setup-interview = 2026-01-31) parses
+    # as a datetime.date, which every reader would then have to special-case.
+    done = values["setup-interview"]
+    if not isinstance(done, str) or (
+        done and done != "declined" and not SETUP_INTERVIEW_REGEX.match(done)
+    ):
+        raise ConfigError(
+            f'setup-interview must be a quoted date like "2026-01-31" or "declined", '
+            f"got {done!r} (from {sources['setup-interview']})"
         )
     for key in MODEL_KEYS:
         value = values[key]

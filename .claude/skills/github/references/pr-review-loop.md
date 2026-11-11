@@ -39,16 +39,9 @@ hand between ticks is. Read the comments, not the check.
 
 ## Which bots are watched
 
-Three are shipped as the starting value — the ones this bundle was exercised
-against, not a claim about your repo:
+None by default (since 5.19.0): the loop runs CI-only until the repo names its bots.
 
-```text
-gemini-code-assist[bot]
-coderabbitai[bot]
-claude[bot]
-```
-
-Say otherwise once, in `arsenal/config.toml`:
+Name them once, in `arsenal/config.toml`:
 
 ```toml
 review-bots = ["reviewer[bot]"]
@@ -56,10 +49,10 @@ review-bots = ["reviewer[bot]"]
 
 `--watch-bots reviewer[bot],custom-bot[bot]` still overrides it per call.
 
-**A repo with no review bot at all sets `review-bots = []`.** Leaving the
-default in place there is the expensive failure: every tick waits for a signal
-nothing will ever send, and the loop sits at `waiting` until someone reads the
-JSON and works out why. An empty list is the same CI-only mode as
+**Name only bots that actually review here.** A listed bot that never posts is
+the expensive failure: every tick waits for a signal nothing will ever send, and
+the loop sits at `waiting` until someone reads the JSON and works out why. The
+empty default is the same CI-only mode as
 `--watch-bots ""` — green CI plus the quiet window is enough to reach
 `ready_to_merge`, and nothing ever reports `bot_commented`.
 
@@ -121,6 +114,8 @@ The wait is bounded. A bot silent for `bot-wait-min` (default 20) after the head
 When every watched bot is out, the loop ends with `bot_skipped`, `bot_rate_limited` or `bot_absent`, and the payload's `decision` names what replaces the bot: `local_review` (`none`, `diff`, `full`) and `full_suite` (`skip`, `run`), from the `verification` profile and the change's risk. Run that review through the review protocol; once its verdict is CLEAR (`adversarial_review.sh check` exits 0), rerun with `--local-review-done` and the state becomes `ready_to_merge` when CI is green. A decision of `none` needs no flag.
 
 Some bots allow only a few on-demand reviews per hour (one, on some free tiers). The quota is per account, not per PR: the next PR triggered inside the hour gets a rate-limit notice and falls through to the local review, which is correct but spends the bot on whichever PR the loop happened to tick first. With several PRs open, trigger the one where a bot review is worth most — the riskiest or largest change — first.
+
+Some bots also gate automatic reviews on the repository itself. CodeRabbit, if a repo uses it, does not auto-review a repo with fewer than 10 GitHub stars; on a public repo it still reviews when asked with `@coderabbitai review` (about one on-demand review per hour per account), so give it that `bot-triggers` entry. On a private repo on its Free plan it posts only a summary or walkthrough, never a line review, so the local review the loop falls through to is the review there.
 
 Trigger commands are set once in `arsenal/config.toml`, for example `bot-triggers = ["yourbot[bot]=@yourbot review"]`; the value `request-reviewer` requests the bot as a reviewer instead of commenting. Some bots ignore commands posted by bot accounts such as `github-actions[bot]`, so post triggers as a user.
 

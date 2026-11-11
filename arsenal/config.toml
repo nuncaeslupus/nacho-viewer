@@ -175,6 +175,7 @@ reviewers = ""
 reviewer-identity = "distinct-session"
 
 [skills]
+android = false
 extract = false
 python = false
 workflow = true

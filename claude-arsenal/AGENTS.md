@@ -1,6 +1,6 @@
 # Claude Arsenal
 
-<!-- claude-arsenal v5.15.0 — imported via @claude-arsenal/AGENTS.md -->
+<!-- claude-arsenal v5.26.0 — imported via @claude-arsenal/AGENTS.md -->
 
 This file is in context on every turn, so it holds only what a session needs before it
 knows what kind of session it is. The rest lives in `claude-arsenal/references/`: plain
@@ -41,8 +41,9 @@ At the start of every session (fresh start, context compaction, or cold restart)
       session and open no work on it.
    b. Run `python3 .claude/skills/init/scripts/init.py --repo-path . --silent` and report
       anything it refreshes, and each `NEW SETTING` line once (`config-acknowledged` in
-      `arsenal/config.toml` silences them). If it says the installed bundle is newer, report that and
-      update the plugin; never pass `--allow-downgrade`. Skip (b) if (a) reported
+      `arsenal/config.toml` silences them). On `SETUP INTERVIEW PENDING`, ask the init skill's
+      setup interview with AskUserQuestion before picking up work. If it says the installed
+      bundle is newer, report that and update the plugin; never pass `--allow-downgrade`. Skip (b) if (a) reported
       `VENDORED SKILL BEHIND BUNDLE`. Skip (a) and (b) when the script is absent.
    c. Read the capability map: `python3 .claude/skills/init/scripts/init.py --list-sections`.
       When a task is squarely covered by a section this repo did not install, say so once,
