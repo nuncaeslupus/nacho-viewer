@@ -151,6 +151,7 @@ describe("reading tools", () => {
 
   it("test_remote_images_menu_toggles_setting", async () => {
     const fake = fakeBackend({});
+    fake.state.config.remoteImages = true;
     const root = document.createElement("div");
     let reloads = 0;
     const shell = new Shell(root, fake.backend, () => reloads++);

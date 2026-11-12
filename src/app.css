@@ -683,6 +683,16 @@ mark.find-match.current {
   font-size: 0.875rem;
 }
 
+.remote-load {
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
 /* Empty state */
 /* Fixed tracks: the box and the list stay put as entries come and go. */
 .empty {
