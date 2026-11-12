@@ -25,6 +25,12 @@ pub fn with_pdf_extension(path: PathBuf) -> PathBuf {
     name.into()
 }
 
+/// Whether adding `.pdf` to the dialog's answer made it a file the dialog never asked about:
+/// its own overwrite check saw `picked`, so the new name needs confirming when it already exists.
+pub fn needs_overwrite_confirmation(picked: &Path, with_extension: &Path) -> bool {
+    picked != with_extension && with_extension.exists()
+}
+
 fn is_pdf(path: &Path) -> bool {
     path.extension()
         .is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
@@ -327,6 +333,23 @@ mod macos {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_export_confirms_overwrite_only_of_a_file_the_dialog_did_not_check() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("report.pdf"), "old").unwrap();
+        let typed = dir.path().join("report");
+        let full = with_pdf_extension(typed.clone());
+        // "report" was checked as "report"; "report.pdf" exists and was not.
+        assert!(needs_overwrite_confirmation(&typed, &full));
+        // The dialog saw this exact name, so its own prompt already covered it.
+        assert!(!needs_overwrite_confirmation(&full, &full));
+        let fresh = dir.path().join("fresh");
+        assert!(!needs_overwrite_confirmation(
+            &fresh,
+            &with_pdf_extension(fresh.clone())
+        ));
+    }
 
     #[test]
     fn test_export_rejects_a_path_without_pdf() {

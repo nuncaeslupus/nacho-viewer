@@ -29,15 +29,20 @@ pub struct DocumentChanged {
     pub mtime_ms: Option<u64>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub deleted: bool,
+    /// Not sent: with the mtime, what tells one version of the file from the next.
+    #[serde(skip)]
+    pub size: Option<u64>,
 }
 
 impl DocumentChanged {
     pub fn of(path: &Path) -> Self {
-        let mtime_ms = fs::metadata(path).ok().map(|m| mtime_ms(&m));
+        let meta = fs::metadata(path).ok();
+        let mtime_ms = meta.as_ref().map(mtime_ms);
         Self {
             path: path.display().to_string(),
             deleted: mtime_ms.is_none(),
             mtime_ms,
+            size: meta.map(|m| m.len()),
         }
     }
 }

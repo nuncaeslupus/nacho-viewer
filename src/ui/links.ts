@@ -51,15 +51,33 @@ function splitHref(href: string): { path: string; fragment: string } {
   return { path: decode(path), fragment: hash < 0 ? "" : href.slice(hash + 1) };
 }
 
-/** `href` relative to the file `from`, with `.` and `..` resolved. */
+/** The root of a Windows path: a drive (`C:`) or a UNC share (`\\\\host\\share`). */
+const WIN_ROOT = /^(?:[A-Za-z]:|\\\\[^\\/]+[\\/][^\\/]+)(?=[\\/]|$)/;
+const WIN_DRIVE = /^[A-Za-z]:(?=\/|$)/;
+
+/** `href` relative to the file `from`, with `.` and `..` resolved. Paths from the backend use the
+ * platform's separator: `\` after a drive or UNC root on Windows, `/` elsewhere. */
 export function resolvePath(from: string, href: string): string {
-  // ponytail: `/`-separated paths only; Linux is the target (D-2).
-  const parts = href.startsWith("/") ? [] : from.split("/").filter(Boolean).slice(0, -1);
-  for (const part of href.split("/")) {
+  const root = WIN_ROOT.exec(from)?.[0];
+  const windows = root !== undefined;
+  const link = windows ? href.replace(/\\/g, "/") : href;
+  const drive = windows ? WIN_DRIVE.exec(link)?.[0] : undefined;
+  const rest = drive ? link.slice(drive.length) : link;
+  const absolute = drive !== undefined || rest.startsWith("/");
+  const parts = absolute
+    ? []
+    : from
+        .slice(root?.length ?? 0)
+        .split(/[\\/]/)
+        .filter(Boolean)
+        .slice(0, -1);
+  for (const part of rest.split("/")) {
     if (part === "..") parts.pop();
     else if (part !== "." && part !== "") parts.push(part);
   }
-  return `/${parts.join("/")}`;
+  if (!windows) return `/${parts.join("/")}`;
+  const sep = from.includes("\\") ? "\\" : "/";
+  return (drive ?? root) + sep + parts.join(sep);
 }
 
 /** What activating `link` in a document at `from` should do. */
@@ -76,7 +94,7 @@ export function route(link: Element, from: string, gesture: Gesture): LinkAction
   if (path === from && gesture === "click") return { type: "scroll", fragment };
   const entry: Entry = { path, fragment, scroll: 0 };
   // `[[My Page]]` is `My Page.md` here, `My-Page.md` in a GitHub wiki.
-  const dashed = path.replace(/[^/]+$/, (name) => name.replace(/ /g, "-"));
+  const dashed = path.replace(/[^/\\]+$/, (name) => name.replace(/ /g, "-"));
   if (kind === "wiki" && dashed !== path) entry.alternates = [dashed];
   return { type: gesture === "click" ? "navigate" : "newTab", entry };
 }

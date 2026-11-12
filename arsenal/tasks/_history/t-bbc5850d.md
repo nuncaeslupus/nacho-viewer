@@ -2,7 +2,7 @@
 id: t-bbc5850d
 title: "review: Export appends .pdf after the dialog's overwrite check"
 priority: 5
-requires: [human:gate]
+status: merged
 ---
 
 Imported from issue #159
