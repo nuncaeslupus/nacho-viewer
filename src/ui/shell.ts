@@ -55,13 +55,19 @@ function arrowKeys(group: HTMLElement, items: HTMLElement[]): void {
   });
 }
 
-function takeReopen(): { paths: string[]; guide: string; settings: boolean } {
+function takeReopen(): {
+  paths: string[];
+  guide: string;
+  settings: boolean;
+  remoteDocs: string[];
+} {
+  const none = { paths: [], guide: "", settings: false, remoteDocs: [] };
   try {
     const saved = sessionStorage.getItem(REOPEN);
     sessionStorage.removeItem(REOPEN);
-    if (saved) return JSON.parse(saved);
+    if (saved) return { ...none, ...JSON.parse(saved) };
   } catch {}
-  return { paths: [], guide: "", settings: false };
+  return none;
 }
 /** Paper text sizes the print dialog offers; the zoom multiplies the sheet's print font. */
 const PRINT_SIZES = [
@@ -153,6 +159,8 @@ export class Shell {
   private fileMenuPath = "";
   /** The user guide once opened: it stays out of the recent files. */
   private guidePath = "";
+  /** Documents the reader chose to load remote images for, kept across the reload that allows it. */
+  private readonly remoteDocs = new Set<string>();
   private readonly notice = h("span", "notice");
   /** The zoom level; a click fits the sheet to the window's width, or returns to 100%. */
   private readonly zoomReadout = h("button", "zoom");
@@ -226,7 +234,7 @@ export class Shell {
       this.saveSettings();
     },
     remoteImages: () => {
-      void this.setRemoteImages(!(this.config?.remoteImages ?? true)).then(() => this.update());
+      void this.setRemoteImages(!(this.config?.remoteImages ?? false)).then(() => this.update());
     },
     viewSource: () => this.active && this.toggleSource(this.active),
     settings: () => this.openSettings(),
@@ -290,8 +298,14 @@ export class Shell {
       this.show(strings.notices.settingsUnavailable);
       return null;
     });
-    // Before any document is inserted; config unread means the default, remote images on.
-    if (this.config?.remoteImages === false) blockRemoteImages(this.root.ownerDocument);
+    // Before any document is inserted. Remote images are off unless the setting says on, so an
+    // unread config blocks them too. A window reloaded for one document's "load remote images"
+    // cannot narrow the CSP (it would block that document too); the render policy still holds.
+    const reopen = takeReopen();
+    for (const path of reopen.remoteDocs) this.remoteDocs.add(path);
+    if (this.config?.remoteImages !== true && this.remoteDocs.size === 0) {
+      blockRemoteImages(this.root.ownerDocument);
+    }
     if (this.config) {
       this.theme = THEMES.includes(this.config.theme) ? this.config.theme : "system";
       this.zoom = clampZoom(this.config.defaultZoom);
@@ -304,7 +318,6 @@ export class Shell {
       () => this.show(strings.notices.userCssUnavailable),
     );
     this.update();
-    const reopen = takeReopen();
     this.guidePath = reopen.guide;
     await this.openPaths([...reopen.paths, ...(await this.backend.takeOpenFiles())]);
     if (reopen.settings) this.openSettings();
@@ -350,18 +363,35 @@ export class Shell {
     }
     this.config = next;
     if (on) {
-      // The reload would close every tab and the dialog: `start` reopens them (the active tab last).
-      // The guide is named too, so it reopens without becoming a recent file.
-      const paths = this.tabs.map(pathOf);
-      if (this.active) paths.push(pathOf(this.active));
-      const reopen = { paths, guide: this.guidePath, settings: this.modal !== null };
-      try {
-        sessionStorage.setItem(REOPEN, JSON.stringify(reopen));
-      } catch {}
-      return this.reloadWindow();
+      return this.reloadReopening();
     }
     blockRemoteImages(this.root.ownerDocument);
     await Promise.all(this.tabs.map((tab) => this.load(tab, true)));
+  }
+
+  /**
+   * Reloads the window. It would close every tab and the dialog: `start` reopens them (the active
+   * tab last). The guide is named too, so it reopens without becoming a recent file.
+   */
+  private reloadReopening(): void {
+    const paths = this.tabs.map(pathOf);
+    if (this.active) paths.push(pathOf(this.active));
+    const reopen = {
+      paths,
+      guide: this.guidePath,
+      settings: this.modal !== null,
+      remoteDocs: [...this.remoteDocs],
+    };
+    try {
+      sessionStorage.setItem(REOPEN, JSON.stringify(reopen));
+    } catch {}
+    this.reloadWindow();
+  }
+
+  /** "Load remote images" for one document: it, and only it, may fetch them from now on. */
+  private allowRemoteImages(path: string): void {
+    this.remoteDocs.add(path);
+    this.reloadReopening();
   }
 
   /** Opens each path in a new tab, or focuses its tab; the last one becomes active. */
@@ -650,13 +680,16 @@ export class Shell {
       tab.text = doc.text;
       if (!tab.source.hidden) tab.source.textContent = doc.text;
       const anchor = reload ? scrollAnchor(tab.canvas, tab.sheet) : undefined;
-      const remoteImages = this.config?.remoteImages ?? true;
+      const remoteImages = this.config?.remoteImages === true || this.remoteDocs.has(doc.path);
       const { readSvg, imageUrl } = this.backend;
       const { outline, settled } = await renderDocument(tab.sheet, doc.text, {
         current: live,
         images: imagePolicy(doc.path, remoteImages, (path) => imageUrl(path)),
       });
       if (!live()) return;
+      if (!remoteImages && tab.sheet.querySelector("img[data-remote-src]")) {
+        this.remoteNotice(tab, doc.path);
+      }
       // Back and forward return to where the user was; the fragment is for the first visit.
       const fragment = !anchor && !entry.visited ? entry.fragment : "";
       const place = anchor ?? (fragment ? undefined : entry.anchor);
@@ -765,6 +798,15 @@ export class Shell {
     tab.sheet.querySelector(":scope > .file-notice")?.remove();
     const notice = h("p", "file-notice", message);
     notice.setAttribute("role", "status");
+    tab.sheet.prepend(notice);
+  }
+
+  /** Tells the reader this document's remote images were not loaded, and offers to load them. */
+  private remoteNotice(tab: Tab, path: string): void {
+    const notice = h("p", "file-notice remote-notice", strings.fileNotices.remoteBlocked);
+    const load = h("button", "remote-load", strings.fileNotices.remoteLoad);
+    load.addEventListener("click", () => this.allowRemoteImages(path));
+    notice.append(" ", load);
     tab.sheet.prepend(notice);
   }
 
@@ -1562,7 +1604,7 @@ export class Shell {
       item.setAttribute("aria-checked", String(item.dataset.style === this.style));
       item.tabIndex = item.dataset.style === this.style ? 0 : -1;
     }
-    this.remoteItem?.setAttribute("aria-checked", String(this.config?.remoteImages ?? true));
+    this.remoteItem?.setAttribute("aria-checked", String(this.config?.remoteImages ?? false));
     this.sourceItem?.setAttribute("aria-checked", String(this.active?.source.hidden === false));
   }
 

@@ -50,9 +50,9 @@ impl AppState {
             let _ = handle.emit("document-changed", changed);
         })?;
 
-        let mut scope = Scope::default();
+        let mut scope = Scope::guarded();
         for recent in config::load(&config_dir.join("config.json")).recent_files {
-            scope.allow(Path::new(&recent));
+            scope.allow_recent(Path::new(&recent));
         }
         Ok(Self {
             scope: Mutex::new(scope),
@@ -293,7 +293,13 @@ fn dropped_files(scope: &mut Scope, paths: &[PathBuf]) -> Option<OpenFiles> {
 #[tauri::command]
 pub async fn read_document(path: String, state: State<'_, AppState>) -> Result<Document, IpcError> {
     // The scope lock covers only the check; the read itself runs without it.
-    let path = lock(&state.scope).check_document(Path::new(&path))?;
+    let path = {
+        let mut scope = lock(&state.scope);
+        let path = scope.check_document(Path::new(&path))?;
+        // A recent file the user just clicked: its folder opens now, not at launch.
+        scope.promote(&path);
+        path
+    };
     document::read_file(&path)
 }
 

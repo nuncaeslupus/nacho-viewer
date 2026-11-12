@@ -37,7 +37,7 @@ impl Default for Config {
             version: VERSION,
             theme: Theme::System,
             default_zoom: 100,
-            remote_images: true,
+            remote_images: false,
             wide_sheet: false,
             style: "classic".into(),
             recent_files: Vec::new(),
@@ -162,6 +162,14 @@ pub fn read_user_css(path: &Path) -> Result<UserCss, IpcError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_config_remote_images_off_by_default() {
+        assert!(!Config::default().remote_images);
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("config.json"), r#"{"version": 1}"#).unwrap();
+        assert!(!load(&dir.path().join("config.json")).remote_images);
+    }
 
     #[test]
     fn test_config_unknown_version_falls_back_to_defaults() {
