@@ -628,6 +628,7 @@ describe("view source", () => {
 describe("remote images setting", () => {
   it("test_remote_images_toggle_rerenders_off_and_reloads_on", async () => {
     const fake = fakeBackend({ "/n/a.md": "![r](https://example.com/a.png)" }, ["/n/a.md"]);
+    fake.state.config.remoteImages = true;
     const root = document.createElement("div");
     document.body.replaceChildren(root);
     let reloads = 0;
@@ -663,6 +664,54 @@ describe("remote images setting", () => {
     }
   });
 
+  it("test_remote_images_off_by_default_with_per_document_load", async () => {
+    const files = {
+      "/n/a.md": "![r](https://example.com/a.png)",
+      "/n/b.md": "![r](https://example.com/b.png)",
+    };
+    const fake = fakeBackend(files, ["/n/a.md"]);
+    expect(fake.state.config.remoteImages).toBe(false);
+    const root = document.createElement("div");
+    document.body.replaceChildren(root);
+    let reloads = 0;
+    const shell = new Shell(root, fake.backend, () => reloads++);
+    shells.push(shell);
+    await shell.start();
+    try {
+      // Nothing is requested and the CSP is narrowed, with no setting touched.
+      const img = root.querySelector(".sheet img");
+      expect(img?.getAttribute("src")).toBeNull();
+      expect(img?.getAttribute("data-remote-src")).toBe("https://example.com/a.png");
+      expect(document.head.querySelector('meta[data-remote-images="off"]')).not.toBeNull();
+      const load = root.querySelector<HTMLButtonElement>(".sheet .remote-notice button");
+      expect(load).not.toBeNull();
+
+      load?.click();
+      expect(reloads).toBe(1);
+      expect(fake.state.config.remoteImages).toBe(false);
+      document.head.querySelector('meta[data-remote-images="off"]')?.remove();
+
+      // The reloaded window loads that document's images, and no other document's.
+      const again = fakeBackend(files, ["/n/a.md"]);
+      const next = new Shell(root, again.backend, () => {});
+      shells.push(next);
+      await next.start();
+      await settle();
+      expect(root.querySelector(".sheet img")?.getAttribute("src")).toBe(
+        "https://example.com/a.png",
+      );
+      expect(root.querySelector(".sheet .remote-notice")).toBeNull();
+      await next.openPaths(["/n/b.md"]);
+      await settle();
+      const blocked = root.querySelectorAll(".sheet img[data-remote-src]");
+      expect(blocked).toHaveLength(1);
+      expect(blocked[0].getAttribute("data-remote-src")).toBe("https://example.com/b.png");
+    } finally {
+      document.head.querySelector('meta[data-remote-images="off"]')?.remove();
+      sessionStorage.clear();
+    }
+  });
+
   it("test_remote_images_reload_reopens_the_user_guide", async () => {
     const fake = fakeBackend({ "/n/a.md": "# A" }, ["/n/a.md"]);
     const root = document.createElement("div");
@@ -693,6 +742,7 @@ describe("remote images setting", () => {
 
   it("test_remote_images_setting_not_saved_changes_nothing", async () => {
     const { root, shell, state } = await open({ "/n/a.md": "# A" }, ["/n/a.md"], (s) => {
+      s.config.remoteImages = true;
       s.fail.setConfig = { kind: "io", message: "disk full" };
     });
     await shell.setRemoteImages(false);

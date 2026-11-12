@@ -5,6 +5,9 @@ const FRAGMENT_URL = /url\(\s*(['"]?)\s*#/gi;
 // Anything that could still fetch once fragment references are prefixed: `url(` to a file,
 // `image-set(`, or CSS escapes hiding either.
 const EXTERNAL_CSS = /url\(\s*['"]?\s*[^\s'"#]|image-set\(|\\/i;
+// Declarations that move an element out of the image's own box: an inlined SVG lives in the
+// app's DOM, so `position: fixed` plus a z-index would cover the window chrome.
+const ESCAPING = /^(?:position|z-index|top|left|right|bottom|inset(?:-.*)?|float)$/i;
 const ID_LISTS = ["aria-labelledby", "aria-describedby"];
 
 const purify = DOMPurify(window);
@@ -15,7 +18,10 @@ let count = 0;
 purify.addHook("afterSanitizeAttributes", (node) => {
   if (!(node instanceof Element)) return;
   for (const { name, value } of Array.from(node.attributes)) {
-    if (name === "id") node.setAttribute(name, prefix + value);
+    // Author classes would pick up the app's own rules (`class="file-menu"` is `position: fixed`);
+    // the `<style>` they target is dropped anyway.
+    if (name === "class") node.removeAttribute(name);
+    else if (name === "id") node.setAttribute(name, prefix + value);
     else if (ID_LISTS.includes(name)) {
       node.setAttribute(
         name,
@@ -31,10 +37,19 @@ purify.addHook("afterSanitizeAttributes", (node) => {
     } else if (value.toLowerCase().includes("url(") || name === "style") {
       const prefixed = value.replace(FRAGMENT_URL, `url($1#${prefix}`);
       if (EXTERNAL_CSS.test(prefixed)) node.removeAttribute(name);
+      else if (name === "style") node.setAttribute(name, safeStyle(prefixed));
       else node.setAttribute(name, prefixed);
     }
   }
 });
+
+/** `style` without the declarations that position the element or reach outside the image. */
+function safeStyle(style: string): string {
+  return style
+    .split(";")
+    .filter((decl) => !ESCAPING.test(decl.split(":")[0].trim()))
+    .join(";");
+}
 
 /**
  * Sanitises an SVG file for inlining (D-13): DOMPurify's SVG profile, `<style>` dropped so its
@@ -47,7 +62,7 @@ export function sanitizeSvg(markup: string): SVGSVGElement | null {
     USE_PROFILES: { svg: true, svgFilters: true },
     // DOMPurify leaves `use` out for its external references; the hook keeps only `#id` ones.
     ADD_TAGS: ["use"],
-    FORBID_TAGS: ["style"],
+    FORBID_TAGS: ["style", "foreignObject"],
     // DOM clobbering needs a bare `id` such as `title`; every id here gets the image's prefix,
     // and the default would drop those ids while their `#id` references survive, prefixed.
     SANITIZE_DOM: false,

@@ -15,6 +15,17 @@ const FLOW = `<?xml version="1.0"?>
 </svg>`;
 
 describe("sanitizeSvg", () => {
+  it("test_svg_inline_style_cannot_position_over_app_chrome", () => {
+    const svg = sanitizeSvg(
+      `<svg xmlns="http://www.w3.org/2000/svg" class="file-menu" style="position:fixed; inset:0;z-index:99999;fill:red">` +
+        `<rect style="TOP: 0 ; fill:blue"/><foreignObject><div>x</div></foreignObject></svg>`,
+    );
+    expect(svg?.getAttribute("style")).toBe("fill:red");
+    expect(svg?.getAttribute("class")).toBeNull();
+    expect(svg?.querySelector("rect")?.getAttribute("style")?.trim()).toBe("fill:blue");
+    expect(svg?.querySelector("foreignObject")).toBeNull();
+  });
+
   it("test_svg_inline_style_tags_stripped", () => {
     const svg = sanitizeSvg(FLOW);
     expect(svg).not.toBeNull();

@@ -6,16 +6,57 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Default)]
 pub struct Scope {
     files: HashSet<PathBuf>,
+    /// Folders whose whole tree the frontend may read from (images, SVGs, linked Markdown).
     folders: HashSet<PathBuf>,
+    /// Folders too broad to grant as a tree (a filesystem root, the home folder): only their
+    /// direct children are readable, never what lies below.
+    flat_folders: HashSet<PathBuf>,
+    /// Extra broad folders beyond a filesystem root, e.g. the home folder and its parent.
+    broad: Vec<PathBuf>,
 }
 
 impl Scope {
+    /// A scope that treats the user's home folder (and the folder holding it) as too broad to
+    /// grant recursively.
+    pub fn guarded() -> Self {
+        let home = dirs::home_dir().and_then(|h| resolve(&h));
+        let broad = home
+            .iter()
+            .flat_map(|h| [Some(h.clone()), h.parent().map(Path::to_path_buf)])
+            .flatten()
+            .collect();
+        Self {
+            broad,
+            ..Self::default()
+        }
+    }
+
     /// Records a file the user opened and returns its canonical path. A folder is refused.
     pub fn allow(&mut self, path: &Path) -> Option<PathBuf> {
         let path = resolve(path).filter(|p| !p.is_dir())?;
-        self.folders.insert(path.parent()?.to_path_buf());
+        let folder = path.parent()?.to_path_buf();
+        if folder.parent().is_none() || self.broad.contains(&folder) {
+            self.flat_folders.insert(folder);
+        } else {
+            self.folders.insert(folder);
+        }
         self.files.insert(path.clone());
         Some(path)
+    }
+
+    /// A recent file from the config: readable as a document, but its folder stays closed until
+    /// the user opens it (`promote`), so a launch grants no folder trees.
+    pub fn allow_recent(&mut self, path: &Path) {
+        if let Some(path) = resolve(path).filter(|p| !p.is_dir()) {
+            self.files.insert(path);
+        }
+    }
+
+    /// The user opened `path` (a recent file read for display): grant its folder as `allow` does.
+    pub fn promote(&mut self, path: &Path) {
+        if self.files.contains(path) {
+            self.allow(path);
+        }
     }
 
     pub fn is_opened(&self, path: &Path) -> bool {
@@ -55,6 +96,7 @@ impl Scope {
 
     fn in_folders(&self, path: &Path) -> bool {
         path.ancestors().skip(1).any(|a| self.folders.contains(a))
+            || path.parent().is_some_and(|p| self.flat_folders.contains(p))
     }
 }
 
@@ -170,6 +212,47 @@ mod tests {
             .check_document(Path::new("readme.md"))
             .unwrap_err();
         assert_eq!(err.kind, ErrorKind::NotPermitted);
+    }
+
+    #[test]
+    fn test_recent_file_grants_no_folder_until_opened() {
+        let root = tempfile::tempdir().unwrap();
+        let notes = fs::canonicalize(root.path()).unwrap().join("notes");
+        fs::create_dir_all(&notes).unwrap();
+        fs::write(notes.join("readme.md"), "# hi").unwrap();
+        fs::write(notes.join("pic.png"), "x").unwrap();
+        fs::write(notes.join("other.md"), "# o").unwrap();
+
+        let mut scope = Scope::default();
+        scope.allow_recent(&notes.join("readme.md"));
+        assert!(scope.check_document(&notes.join("readme.md")).is_ok());
+        assert!(scope.check_image(&notes.join("pic.png")).is_err());
+        assert!(scope.check_document(&notes.join("other.md")).is_err());
+
+        scope.promote(&notes.join("readme.md"));
+        assert!(scope.check_image(&notes.join("pic.png")).is_ok());
+        // Promoting a file the scope never held grants nothing.
+        let mut scope = Scope::default();
+        scope.promote(&notes.join("readme.md"));
+        assert!(scope.check_image(&notes.join("pic.png")).is_err());
+    }
+
+    #[test]
+    fn test_broad_folder_is_not_granted_recursively() {
+        let root = tempfile::tempdir().unwrap();
+        let home = fs::canonicalize(root.path()).unwrap();
+        fs::create_dir_all(home.join("deep/er")).unwrap();
+        fs::write(home.join("notes.md"), "# n").unwrap();
+        fs::write(home.join("pic.png"), "x").unwrap();
+        fs::write(home.join("deep/er/secret.png"), "x").unwrap();
+
+        let mut scope = Scope {
+            broad: vec![home.clone()],
+            ..Scope::default()
+        };
+        scope.allow(&home.join("notes.md")).unwrap();
+        assert!(scope.check_image(&home.join("pic.png")).is_ok());
+        assert!(scope.check_image(&home.join("deep/er/secret.png")).is_err());
     }
 
     #[test]

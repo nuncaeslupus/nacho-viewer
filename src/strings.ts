@@ -29,6 +29,8 @@ export const strings = {
   // One line at the top of a sheet that keeps showing the last version (live reload).
   fileNotices: {
     deleted: "This file was deleted. Showing the last version.",
+    remoteBlocked: "Remote images in this document were not loaded.",
+    remoteLoad: "Load remote images for this document",
     reloadFailed: "This file could not be reloaded. Showing the last version.",
   },
   more: "More",
