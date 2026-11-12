@@ -25,6 +25,12 @@ pub fn with_pdf_extension(path: PathBuf) -> PathBuf {
     name.into()
 }
 
+/// True when adding `.pdf` turned the dialog's answer into a file that already exists: the
+/// dialog's own overwrite check only saw the name without the extension.
+pub fn overwrites_unasked(raw: &Path, fixed: &Path) -> bool {
+    raw != fixed && fixed.exists()
+}
+
 fn is_pdf(path: &Path) -> bool {
     path.extension()
         .is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
@@ -378,6 +384,29 @@ mod tests {
             with_pdf_extension(PathBuf::from(r"C:\out\notes")),
             PathBuf::from(r"C:\out\notes.pdf")
         );
+    }
+
+    #[test]
+    fn test_export_typed_name_matching_an_existing_pdf_is_not_silently_overwritten() {
+        let dir = std::env::temp_dir().join(format!("nacho-overwrite-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("report.pdf"), b"old").unwrap();
+        let typed = dir.join("report");
+        assert!(overwrites_unasked(
+            &typed,
+            &with_pdf_extension(typed.clone())
+        ));
+        let chosen = dir.join("report.pdf"); // the dialog already confirmed this one
+        assert!(!overwrites_unasked(
+            &chosen,
+            &with_pdf_extension(chosen.clone())
+        ));
+        let fresh = dir.join("new");
+        assert!(!overwrites_unasked(
+            &fresh,
+            &with_pdf_extension(fresh.clone())
+        ));
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

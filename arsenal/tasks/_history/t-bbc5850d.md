@@ -2,7 +2,7 @@
 id: t-bbc5850d
 title: "review: Export appends .pdf after the dialog's overwrite check"
 priority: 5
-requires: [human:gate]
+status: merged
 ---
 
 Imported from issue #159
@@ -24,13 +24,6 @@ _From the full repo review of 2026-11-11 (finding #8). Not fixed yet; verify bef
 
 ## Acceptance gate
 
-<!-- This task came from an issue, so its "gate" is prose. Write a real check
-     below, then DELETE the `requires: [human:gate]` line in the front matter.
-     Until that line is gone the selector will not offer this task, which is
-     deliberate: a prose gate runs nothing, and a gate that runs nothing passes
-     everything. -->
-
 ```bash
-# arsenal:gate-placeholder — replace with the real check; it may land in this task's own PR
-false
+cd src-tauri && cargo test test_export_typed_name
 ```

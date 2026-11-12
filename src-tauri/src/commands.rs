@@ -156,23 +156,36 @@ pub async fn save_dialog<R: Runtime>(
     name: String,
     near: Option<String>,
 ) -> Result<Option<String>, IpcError> {
-    let mut dialog = app
-        .dialog()
-        .file()
-        .add_filter("PDF", &["pdf"])
-        .set_file_name(name);
-    if let Some(window) = app.get_webview_window("main") {
-        dialog = dialog.set_parent(&window);
-    }
     // ponytail: remembered for this run only; the recent file's folder after a restart.
     let near = lock(&state.last_export).clone().or(near.map(PathBuf::from));
-    if let Some(dir) = start_folder(near.as_deref(), app.path().home_dir().ok()) {
-        dialog = dialog.set_directory(dir);
-    }
-    let picked = dialog
-        .blocking_save_file()
-        .and_then(|p| p.into_path().ok())
-        .map(export::with_pdf_extension);
+    let mut name = name;
+    let mut dir = start_folder(near.as_deref(), app.path().home_dir().ok());
+    let picked = loop {
+        let mut dialog = app
+            .dialog()
+            .file()
+            .add_filter("PDF", &["pdf"])
+            .set_file_name(&name);
+        if let Some(window) = app.get_webview_window("main") {
+            dialog = dialog.set_parent(&window);
+        }
+        if let Some(dir) = &dir {
+            dialog = dialog.set_directory(dir);
+        }
+        let Some(raw) = dialog.blocking_save_file().and_then(|p| p.into_path().ok()) else {
+            break None;
+        };
+        let fixed = export::with_pdf_extension(raw.clone());
+        // The dialog only checked `raw`: ask again with the real name so it can confirm.
+        if export::overwrites_unasked(&raw, &fixed) {
+            if let Some(n) = fixed.file_name() {
+                name = n.to_string_lossy().into_owned();
+            }
+            dir = fixed.parent().map(Path::to_path_buf);
+            continue;
+        }
+        break Some(fixed);
+    };
     let shown = picked.as_ref().map(|p| p.display().to_string());
     if picked.is_some() {
         lock(&state.last_export).clone_from(&picked);
