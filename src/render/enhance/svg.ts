@@ -56,7 +56,11 @@ export function sanitizeSvg(markup: string): SVGSVGElement | null {
   const template = document.createElement("template");
   template.innerHTML = clean;
   const svg = template.content.firstElementChild;
-  return svg instanceof SVGSVGElement && svg.namespaceURI === SVG_NS ? svg : null;
+  if (!(svg instanceof SVGSVGElement) || svg.namespaceURI !== SVG_NS) return null;
+  // The root is a CSS box in the live page: `position:fixed` there could cover the app chrome.
+  // Inner elements are not boxes, so their styles stay.
+  svg.removeAttribute("style");
+  return svg;
 }
 
 /** Replaces each `img[data-svg-path]` with the sanitised SVG; on any failure, a plain `<img>`. */
