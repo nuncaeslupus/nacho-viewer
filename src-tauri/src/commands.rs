@@ -451,17 +451,14 @@ mod tests {
 
     #[test]
     fn test_opened_urls_become_paths_and_other_urls_are_skipped() {
-        let urls: Vec<url::Url> = [
-            "file:///Users/me/My%20Notes/a.md",
-            "https://example.com/a.md",
-        ]
-        .iter()
-        .map(|u| u.parse().unwrap())
-        .collect();
-        assert_eq!(
-            paths_from_urls(&urls),
-            [PathBuf::from("/Users/me/My Notes/a.md")]
-        );
+        let dir = tempfile::tempdir().unwrap();
+        let doc = dir.path().join("My Notes").join("a.md");
+        let urls = [
+            url::Url::from_file_path(&doc).unwrap(),
+            "https://example.com/a.md".parse().unwrap(),
+        ];
+        assert!(urls[0].as_str().contains("My%20Notes"));
+        assert_eq!(paths_from_urls(&urls), [doc]);
     }
 
     #[test]
