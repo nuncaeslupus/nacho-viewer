@@ -478,7 +478,8 @@ mod tests {
     #[test]
     fn test_open_dialog_picks_enter_scope_before_return() {
         let dir = tempfile::tempdir().unwrap();
-        let dir = fs::canonicalize(dir.path()).unwrap();
+        // The app's paths are plain (no `\\?\` prefix on Windows), so are the expected ones.
+        let dir = dunce::canonicalize(dir.path()).unwrap();
         let doc = dir.join("a.md");
         fs::write(&doc, "# a").unwrap();
         let mut scope = Scope::default();
@@ -516,7 +517,8 @@ mod tests {
     #[test]
     fn test_drop_emits_only_accepted_paths() {
         let dir = tempfile::tempdir().unwrap();
-        let dir = fs::canonicalize(dir.path()).unwrap();
+        // The app's paths are plain (no `\\?\` prefix on Windows), so are the expected ones.
+        let dir = dunce::canonicalize(dir.path()).unwrap();
         let doc = dir.join("a.md");
         fs::write(&doc, "# a").unwrap();
         let mut scope = Scope::default();
