@@ -25,17 +25,14 @@ Reads `status/specification.md` to know what should be shipping. Confirms scope 
 
 - Does the change solve the stated problem?
 - All acceptance criteria satisfied?
-- Every task's **Gate** is recorded and met:
-
-  ```bash
-  python3 "${CLAUDE_SKILL_DIR}/../gate-check/scripts/run_gate.py" --input status/plan.md
-  ```
+- Every task's **Gate** is recorded and met — the `gate-check` skill's
+  `run_gate.py --input status/plan.md` answers it.
 
   Exit 1 is No-Go. Exit 0 still leaves each manual (`?`) gate to a human verdict; one not yet confirmed is No-Go. Exit 2 (no Gate column or usage error): confirm the plan path, then fall back to the acceptance criteria only for a plan that predates gates.
 - Every spec or plan the branch changed has a reader built from its current text (exit 1 is No-Go: regenerate the reader it names, hand the HTML over, and commit it with the document):
 
   ```bash
-  python3 "${CLAUDE_SKILL_DIR}/../init/assets/scripts/reader_check.py" branch
+  python3 claude-arsenal/scripts/reader_check.py branch
   ```
 - If partial delivery → is the partial state safe and functional?
 

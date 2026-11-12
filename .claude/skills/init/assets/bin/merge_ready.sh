@@ -116,7 +116,8 @@ tools, assemble one JSON array of the record below, and pipe it in:
   GET /repos/${slug}/pulls/${PR}/files       (risk tier, when review.preset is set)
   (thread resolution is GraphQL-only; omit \`threads\` if you cannot read it)
 
-  [{"number": ${PR}, "title": …, "draft": …, "mergeable": …, "created_at": …,
+  [{"number": ${PR}, "title": …, "draft": …, "mergeable": …,
+    "mergeable_state": …, "created_at": …,
     "head": {"sha": …, "ref": …}, "user": {"login": …},
     "checks": [{"name": …, "status": …, "conclusion": …, "head_sha": …}],
     "reviews": [{"state": …, "commit_id": …, "author_association": …,
@@ -133,6 +134,15 @@ MANUAL
         ;;
     4) _fail "cannot read PR ${PR} from ${slug}" ;;
 esac
+
+# GitHub computes mergeability lazily: the first read after a push is often
+# `unknown`. Ask once more before reporting it; pr_audit blocks a PR still unknown.
+_merge_state() { printf '%s' "$1" | python3 -c \
+    'import json,sys;print(json.load(sys.stdin).get("mergeable_state") or "")' 2>/dev/null; }
+if [[ "$(_merge_state "${pr_json}")" == "unknown" ]]; then
+    sleep "${MERGE_READY_RETRY_SLEEP:-3}"
+    pr_json="$(api "/repos/${slug}/pulls/${PR}")" || _fail "cannot read PR ${PR} from ${slug}"
+fi
 
 head_sha="$(printf '%s' "${pr_json}" | python3 -c \
     'import json,sys;print((json.load(sys.stdin).get("head") or {}).get("sha") or "")')"
@@ -206,6 +216,7 @@ record = {
     "title": pr.get("title") or "",
     "draft": bool(pr.get("draft")),
     "mergeable": pr.get("mergeable"),
+    "mergeable_state": pr.get("mergeable_state"),
     "changed_files": pr.get("changed_files"),
     "created_at": pr.get("created_at"),
     "updated_at": pr.get("updated_at"),

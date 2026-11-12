@@ -35,6 +35,18 @@
       ]
     },
     {
+      "name": "android",
+      "default": false,
+      "core": false,
+      "blurb": "diagnosing Android devices from the bugreports they produce",
+      "skills": [
+        {
+          "name": "bugreport",
+          "description": "Reads Android bugreports (dumpstate .txt or .zip) through a byte-offset index — device summary, ranked checkup, section lookup, merged timeline, redacted copies, report diffs. Use when the user has a bugreport to read or diagnose. Not for live-device adb sessions or logcat-only files."
+        }
+      ]
+    },
+    {
       "name": "extract",
       "default": false,
       "core": false,

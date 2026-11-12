@@ -3,6 +3,7 @@
 
 import argparse
 import contextlib
+import datetime
 import hashlib
 import importlib.util
 import json
@@ -330,6 +331,55 @@ def _bundle_dir(override: Path | None = None) -> Path:
     return path
 
 
+def _locally_modified(path: Path) -> bool:
+    """True when git reports uncommitted changes to tracked content at `path`.
+
+    The refresh used to overwrite (and the skill vendoring rmtree) whatever was
+    there, so an edit nobody had committed yet was destroyed with no message and
+    no way back. Untracked files do not count: a first install that was never
+    committed is init's own output, not someone's work. Outside git, or when git
+    cannot answer, nothing counts as modified — the old behaviour.
+    """
+    try:
+        out = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(path if path.is_dir() else path.parent),
+                "status",
+                "--porcelain",
+                "--",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    if out.returncode != 0:
+        return False
+    return any(line and not line.startswith("??") for line in out.stdout.splitlines())
+
+
+def _same_tree(src: Path, dst: Path) -> bool:
+    """`dst` holds exactly `src`'s files (ignoring the vendor marker and caches)."""
+
+    def files(root: Path) -> dict[str, str]:
+        return {
+            f.relative_to(root).as_posix(): _content_sha(f)
+            for f in root.rglob("*")
+            if f.is_file() and "__pycache__" not in f.parts and f.name != _VENDOR_MARKER
+        }
+
+    return files(src) == files(dst)
+
+
+def _keep_local(rel: str) -> None:
+    # Printed even under --silent: this is the one refresh outcome that needs a person.
+    print(f"  MODIFIED LOCALLY — left as is: {rel}; commit or discard it, then re-run init")
+
+
 def _content_sha(path: Path) -> str:
     """SHA-256 of a file's content, with newlines normalised to LF.
 
@@ -381,6 +431,8 @@ def _refresh_bundle(bundle: Path, target: Path, silent: bool = False) -> None:
         if dst.exists() and _content_sha(src) == _content_sha(dst):
             if not silent:
                 print(f"  up to date: {rel}")
+        elif dst.exists() and _locally_modified(dst):
+            _keep_local(rel.as_posix())
         else:
             shutil.copy2(src, dst)
             # copy2 already mirrors the source mode; restore +x only for files
@@ -554,6 +606,8 @@ def _prune_bundle(bundle: Path, target: Path, previous: set[str] | None) -> None
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(installed), str(dest))
                 print(f"  retired to {_RETIRED_DIR}/ (no longer shipped): {dirname}/{rel}")
+            elif f"{dirname}/{rel}" in previous and _locally_modified(installed):
+                _keep_local(f"{dirname}/{rel}")
             elif f"{dirname}/{rel}" in previous:
                 installed.unlink()
                 print(f"  removed (no longer shipped): {dirname}/{rel}")
@@ -1324,6 +1378,11 @@ def _vendor_skills(
         if target.exists() and not (target / _VENDOR_MARKER).is_file():
             print(f"  skills: {name} exists and is not arsenal-vendored — left alone")
             continue
+        if target.exists() and _same_tree(source / name, target):
+            continue
+        if target.exists() and _locally_modified(target):
+            _keep_local(f"{dest.name}/{name}/")
+            continue
         if target.exists():
             shutil.rmtree(target)
         shutil.copytree(source / name, target)
@@ -1336,6 +1395,9 @@ def _vendor_skills(
     # loop can make it skip the entry that follows a deleted one.
     for d in sorted(dest.iterdir()):
         if d.is_dir() and (d / _VENDOR_MARKER).is_file() and d.name not in available:
+            if _locally_modified(d):
+                _keep_local(f"{dest.name}/{d.name}/")
+                continue
             shutil.rmtree(d)
             removed.append(d.name)
 
@@ -1441,11 +1503,17 @@ def _retire_plugin_declaration(repo_path: Path) -> None:
         print("  settings.json: retired the plugin declaration (vendored copies supersede it)")
 
 
+def _gitignore_key(pattern: str) -> tuple[bool, str]:
+    """A pattern with a slash before its end is anchored with or without the leading one."""
+    p = pattern.strip()
+    return (p.startswith("/") or "/" in p.rstrip("/"), p.lstrip("/"))
+
+
 def _add_gitignore_entry(repo_path: Path, entry: str) -> None:
     gitignore = repo_path / ".gitignore"
     if gitignore.exists():
         lines = gitignore.read_text(encoding="utf-8").splitlines()
-        if entry in lines:
+        if _gitignore_key(entry) in {_gitignore_key(line) for line in lines}:
             return
         with gitignore.open("a", encoding="utf-8") as f:
             f.write(f"\n{entry}\n")
@@ -2405,6 +2473,12 @@ def init_workspace(
 # The manual review command each known bot answers to, offered by the setup
 # interview for the bots in `review-bots`. "request-reviewer" is not a comment:
 # review_sources.py requests the bot as a reviewer instead.
+#
+# CodeRabbit's trigger matters more than the others: it does not auto-review a
+# repo with fewer than 10 GitHub stars, but on a PUBLIC repo it still reviews
+# when asked with `@coderabbitai review` (about one on-demand review per hour
+# per account). On a private repo on its Free plan it posts only a summary,
+# never a line review, so the local adversarial review has to stand in there.
 KNOWN_BOT_TRIGGERS = {
     "coderabbitai[bot]": "@coderabbitai review",
     "gemini-code-assist[bot]": "/gemini review",
@@ -2423,7 +2497,15 @@ _INTERVIEW_KEYS = {
     "review_preset": "review.preset",
     "always_human_paths": "review.always-human-paths",
     "digest_decisions": "review.digest-decisions",
+    "merge_policy": "merge-policy",
+    "review_bots": "review-bots",
 }
+
+# Recorded by every answered interview (the date) or by --interview-declined.
+# While it is absent, every init run prints SETUP INTERVIEW PENDING: asking on
+# a first install only meant a host installed before the interview existed, or
+# whose first install skipped it, was never asked at all.
+_INTERVIEW_DONE_KEY = "setup-interview"
 
 
 def _arsenal_config() -> Any:
@@ -2444,7 +2526,7 @@ def _interview_answers(args: argparse.Namespace) -> dict[str, str]:
         raw = getattr(args, dest)
         if raw is None:
             continue
-        if key in ("autonomy", "verification", "review.preset"):
+        if key in ("autonomy", "verification", "review.preset", "merge-policy"):
             allowed = _arsenal_config().ENUMS[key]
             if raw not in allowed:
                 sys.exit(f"init: --{key} must be one of {', '.join(sorted(allowed))}, got {raw!r}")
@@ -2469,20 +2551,44 @@ def _interview_answers(args: argparse.Namespace) -> dict[str, str]:
             # ensure_ascii=False: JSON escapes non-BMP characters as surrogate
             # pairs, which TOML rejects; the characters themselves are valid.
             answers[key] = "[" + ", ".join(json.dumps(e, ensure_ascii=False) for e in entries) + "]"
+        elif key == "review-bots":
+            answers[key] = json.dumps([b.strip() for b in raw.split(",") if b.strip()])
         else:
             answers[key] = json.dumps(raw, ensure_ascii=False)
     return answers
 
 
 def _record_interview(repo_path: Path, answers: dict[str, str]) -> None:
-    """Write the interview answers into arsenal/config.toml, above any table."""
+    """Write the interview answers into arsenal/config.toml, above any table.
+
+    Also stamps `setup-interview` with today's date — or keeps the "declined"
+    the caller passed — so the PENDING line stops for good.
+    """
     config = _home(repo_path) / "config.toml"
+    answers = dict(answers)
+    answers.setdefault(_INTERVIEW_DONE_KEY, json.dumps(datetime.date.today().isoformat()))
     for key, value in answers.items():
         if key.startswith("review."):
             _upsert_table_key(config, "review", key.split(".", 1)[1], value)
         else:
             _upsert_bare_key(config, key, value)
         print(f"  config.toml: {key} = {value}")
+
+
+def _report_interview_pending(repo_path: Path) -> None:
+    """Print SETUP INTERVIEW PENDING while `setup-interview` is unrecorded.
+
+    Printed on every run, --silent and upgrades included: session start is the
+    only moment a host installed without the interview would ever be asked.
+    """
+    if _config_value(_home(repo_path) / "config.toml", _INTERVIEW_DONE_KEY):
+        return
+    print(
+        "SETUP INTERVIEW PENDING — arsenal/config.toml has no `setup-interview`, so nobody "
+        "has answered how this repo should work (autonomy, merge-policy, review). Ask the "
+        "init skill's § Setup interview with AskUserQuestion before picking up work, then "
+        "pass the answers to init.py (or --interview-declined if the user skips it)."
+    )
 
 
 def _value_end(lines: list[str], start: int) -> int:
@@ -2556,6 +2662,17 @@ def suggest_bot_triggers(repo_path: Path) -> int:
         if bot in KNOWN_BOT_TRIGGERS
     ]
     print(",".join(rows))
+    # Advice on stderr, so stdout stays a pasteable --bot-triggers value. Not
+    # detected: whether the repo is public needs a GitHub round trip, and the
+    # interview is asking the user anyway.
+    if "coderabbitai[bot]" in values["review-bots"]:
+        print(
+            "note: CodeRabbit skips auto-review on repos under 10 stars. On a PUBLIC repo keep "
+            "the `@coderabbitai review` trigger (about one on-demand review per hour); on a "
+            "private Free-plan repo it posts only a summary, so the local adversarial review "
+            "stands in.",
+            file=sys.stderr,
+        )
     return 0
 
 
@@ -2682,6 +2799,22 @@ def main() -> None:
         help="Count a digest approval as a human one; written as `[review] digest-decisions`.",
     )
     p.add_argument(
+        "--merge-policy",
+        metavar="always|after-ci|after-review|after-ci-and-review|never",
+        help="How far a task PR must get before an agent merges it; written as `merge-policy`.",
+    )
+    p.add_argument(
+        "--interview-declined",
+        action="store_true",
+        help='The user skipped the setup interview; records setup-interview = "declined" so '
+        "it is not asked again.",
+    )
+    p.add_argument(
+        "--review-bots",
+        metavar="LOGIN,...",
+        help="Review bots the PR loop waits on; written as `review-bots` (empty = CI-only).",
+    )
+    p.add_argument(
         "--suggest-bot-triggers",
         action="store_true",
         help="Print the known trigger for each bot in review-bots, as a --bot-triggers value. "
@@ -2694,6 +2827,10 @@ def main() -> None:
         raise SystemExit(suggest_bot_triggers(repo_path))
     # Validated before the install runs, so a bad answer writes nothing at all.
     interview = _interview_answers(args)
+    if args.interview_declined:
+        if interview:
+            sys.exit("init: --interview-declined cannot be combined with interview answers")
+        interview = {_INTERVIEW_DONE_KEY: json.dumps("declined")}
     bundle_override = Path(args.bundle_dir) if args.bundle_dir else None
 
     # Read-only, and answered before anything else: this is what the session-start
@@ -2736,6 +2873,8 @@ def main() -> None:
         )
     if installed and interview:
         _record_interview(repo_path, interview)
+    if installed:
+        _report_interview_pending(repo_path)
 
 
 if __name__ == "__main__":

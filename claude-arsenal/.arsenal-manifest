@@ -56,6 +56,7 @@ scripts/arsenal_config.py
 scripts/arsenal_migrate.py
 scripts/arsenal_timings.py
 scripts/branch_protection.py
+scripts/ci_shape.py
 scripts/create_reader.py
 scripts/digest.py
 scripts/gate_evidence.py

@@ -123,3 +123,7 @@ It finds the spec (`arsenal/project/*/spec.md` or `status/specification.md`), wr
 them. Load `claude-arsenal:core:init § references/annotatable-reader.md` when a
 returned notes export arrives, when recording approval, or when another document
 needs a reader.
+
+For a user-facing problem, ask once at the start whether a screens review (annotated
+screenshots, same reader) would help; when yes, or when the user asks for screenshots,
+load that reference's screens section.

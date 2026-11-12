@@ -41,7 +41,9 @@ dispatches that many workers at once. Run when the queue has open tasks:
      (exit 1), git worktrees do not work here at all → set
      `ARSENAL_MAX_WORKERS=1` and run **serialized in-place mode** for the whole
      session (one worker at a time; `worker_postcheck.sh` keeps the branch clean
-     between them).
+     between them). In this mode the task's PR commits the whole checkout, so
+     `claim_task.sh` refuses (exit 2) while `git status` shows changes no task
+     made; relay the paths to the user rather than stashing them yourself.
    - If it prints `available`, dispatch the **first batch as a single worker**.
      You no longer have to remember to: `task_select.py` returns one task unless
      the sentinel reads a proven `available`, and the first round is always

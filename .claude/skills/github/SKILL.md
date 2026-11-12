@@ -54,7 +54,7 @@ Before `gh pr create`, run the host repo's lint/format/test gate (`make lint`,
 project has no lint target, say so, propose one, and proceed.
 
 ```bash
-FAST="${CLAUDE_SKILL_DIR}/../init/assets/bin/fast_gate.sh"
+FAST=claude-arsenal/bin/fast_gate.sh
 bash "$FAST"          # each review round: `preflight-gate` over the changed files
 bash "$FAST" --full   # before merge, only if no receipt or green CI covers the tree
 ```
