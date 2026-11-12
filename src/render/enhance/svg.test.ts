@@ -15,6 +15,14 @@ const FLOW = `<?xml version="1.0"?>
 </svg>`;
 
 describe("sanitizeSvg", () => {
+  it("test_svg_root_style_dropped", () => {
+    const svg = sanitizeSvg(
+      '<svg xmlns="http://www.w3.org/2000/svg" style="position:fixed;inset:0;z-index:99999"><rect style="fill:red"/></svg>',
+    );
+    expect(svg?.hasAttribute("style")).toBe(false);
+    expect(svg?.querySelector("rect")?.getAttribute("style")).toBe("fill:red");
+  });
+
   it("test_svg_inline_style_tags_stripped", () => {
     const svg = sanitizeSvg(FLOW);
     expect(svg).not.toBeNull();
