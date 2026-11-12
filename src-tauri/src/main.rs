@@ -81,6 +81,16 @@ fn main() {
             commands::check_update,
             commands::install_update,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Nacho Viewer");
+        .build(tauri::generate_context!())
+        .expect("error while building Nacho Viewer")
+        .run(on_run_event);
+}
+
+/// macOS hands Finder's Open and Open With to the running app as an event, not as arguments.
+#[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
+fn on_run_event(app: &tauri::AppHandle, event: tauri::RunEvent) {
+    #[cfg(target_os = "macos")]
+    if let tauri::RunEvent::Opened { urls } = event {
+        commands::open_from_os(app, &urls);
+    }
 }

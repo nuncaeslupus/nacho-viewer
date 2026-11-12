@@ -7,6 +7,7 @@ export const strings = {
   recentRemove: (name: string) => `Remove ${name} from the list`,
   recentClear: "Clear list",
   documentError: "This document could not be opened.",
+  renderTimedOut: "This document took too long to render and was not shown.",
   zoomPercent: (percent: number) => `${percent}%`,
   zoomToggle: "Back to 100%",
   notices: {

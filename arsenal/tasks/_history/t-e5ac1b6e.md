@@ -2,7 +2,7 @@
 id: t-e5ac1b6e
 title: "review: macOS file association never opens the file (no RunEvent::Opened handler)"
 priority: 5
-requires: [human:gate]
+status: merged
 ---
 
 Imported from issue #152

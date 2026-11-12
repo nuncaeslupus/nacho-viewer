@@ -1,3 +1,4 @@
+import { strings } from "../strings";
 import { Anchors, type Enhanced, enhance, enhancePart, renderMermaid } from "./enhance";
 import type { ImagePolicy } from "./enhance/images";
 import { scroller } from "./enhance/scroll";
@@ -12,7 +13,7 @@ const LARGE = 64_000;
 const SLICE_MS = 40;
 /** About how many characters of HTML make a pixel of height, to size boxes not laid out yet. */
 const CHARS_PER_PX = 8;
-/** A worker that has not answered by then is given up on, and the UI thread parses. */
+/** A worker that has not answered by then is given up on, and the document is not shown. */
 const WORKER_TIMEOUT_MS = 10_000;
 
 let worker: Worker | null | undefined;
@@ -48,10 +49,12 @@ async function parseLarge(source: string): Promise<string[]> {
   const off = typeof Worker === "function" && parseWorker();
   if (off) {
     const id = ++requests;
+    let timedOut = false;
     const chunks = await new Promise<string[] | null>((resolve) => {
       const timer = setTimeout(() => {
         // A worker stuck on one document holds up every later one: a fresh one starts.
-        if (pending.has(id)) dropWorker(undefined);
+        timedOut = pending.has(id);
+        if (timedOut) dropWorker(undefined);
       }, WORKER_TIMEOUT_MS);
       pending.set(id, (result) => {
         clearTimeout(timer);
@@ -59,6 +62,8 @@ async function parseLarge(source: string): Promise<string[]> {
       });
       off.postMessage({ id, source } satisfies ParseRequest);
     });
+    // Parsing the same document on the UI thread would freeze the window for at least as long.
+    if (timedOut) throw new Error(strings.renderTimedOut);
     if (chunks) return chunks;
   }
   return renderChunks(source);

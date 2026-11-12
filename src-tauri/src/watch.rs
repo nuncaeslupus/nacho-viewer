@@ -55,8 +55,10 @@ impl Registry {
 }
 
 /// A watcher whose events, debounced, become one `emit` per changed file in `registry`. Other
-/// files in a watched folder are ignored, and so are events that leave a file's mtime as last
-/// reported: inotify reports opens and reads, so a reload's own read would trigger the next one.
+/// files in a watched folder are ignored, and so are events that leave a file's mtime and size as
+/// last reported: inotify reports opens and reads, so a reload's own read would trigger the next
+/// one. The size is there because a coarse-mtime filesystem, or `cp -p`, can change a file
+/// without moving its mtime.
 /// The caller adds folders through `watcher()`.
 pub fn debouncer(
     registry: Arc<Mutex<Registry>>,
@@ -75,7 +77,8 @@ pub fn debouncer(
         };
         for path in paths {
             let changed = DocumentChanged::of(&path);
-            if reported.insert(path, changed.mtime_ms) != Some(changed.mtime_ms) {
+            let stamp = (changed.mtime_ms, changed.size);
+            if reported.insert(path, stamp) != Some(stamp) {
                 emit(changed);
             }
         }
@@ -124,6 +127,37 @@ mod tests {
         fs::remove_file(&doc).unwrap();
         let changed = rx.recv_timeout(Duration::from_secs(2)).unwrap();
         assert!(changed.deleted && changed.mtime_ms.is_none());
+    }
+
+    #[test]
+    fn test_change_that_keeps_the_mtime_but_not_the_size_is_reported() {
+        let dir = tempfile::tempdir().unwrap();
+        let dir = fs::canonicalize(dir.path()).unwrap();
+        let doc = dir.join("a.md");
+        fs::write(&doc, "# one").unwrap();
+        let registry = Arc::new(Mutex::new(Registry::default()));
+        let folder = registry.lock().unwrap().add(&doc).unwrap();
+        let (tx, rx) = mpsc::channel();
+        let mut debouncer = debouncer(registry, move |c| tx.send(c).unwrap()).unwrap();
+        debouncer
+            .watcher()
+            .watch(&folder, RecursiveMode::NonRecursive)
+            .unwrap();
+
+        fs::write(&doc, "# two").unwrap();
+        let first = rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        // The next save lands in the same mtime tick (or restores it, as `cp -p` does).
+        let mtime = fs::metadata(&doc).unwrap().modified().unwrap();
+        fs::write(&doc, "# three, longer").unwrap();
+        fs::File::options()
+            .write(true)
+            .open(&doc)
+            .unwrap()
+            .set_modified(mtime)
+            .unwrap();
+        let second = rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        assert_eq!(second.mtime_ms, first.mtime_ms);
+        assert_ne!(second.size, first.size);
     }
 
     #[test]
