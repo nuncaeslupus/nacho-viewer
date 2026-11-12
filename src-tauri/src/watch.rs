@@ -2,6 +2,7 @@ use crate::document::DocumentChanged;
 use notify_debouncer_mini::notify::{self, RecommendedWatcher};
 use notify_debouncer_mini::{new_debouncer, DebounceEventResult, Debouncer};
 use std::collections::{BTreeSet, HashMap};
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -55,8 +56,8 @@ impl Registry {
 }
 
 /// A watcher whose events, debounced, become one `emit` per changed file in `registry`. Other
-/// files in a watched folder are ignored, and so are events that leave a file's mtime as last
-/// reported: inotify reports opens and reads, so a reload's own read would trigger the next one.
+/// files in a watched folder are ignored, and so are events that leave a file's mtime and size as
+/// last reported: inotify reports opens and reads, so a reload's own read would trigger the next one.
 /// The caller adds folders through `watcher()`.
 pub fn debouncer(
     registry: Arc<Mutex<Registry>>,
@@ -75,7 +76,10 @@ pub fn debouncer(
         };
         for path in paths {
             let changed = DocumentChanged::of(&path);
-            if reported.insert(path, changed.mtime_ms) != Some(changed.mtime_ms) {
+            // Size joins mtime: a coarse mtime clock or `cp -p` can leave the mtime alone.
+            let size = fs::metadata(&path).ok().map(|m| m.len());
+            let key = (changed.mtime_ms, size);
+            if reported.insert(path, key) != Some(key) {
                 emit(changed);
             }
         }
@@ -146,6 +150,41 @@ mod tests {
         rx.recv_timeout(Duration::from_secs(2)).unwrap();
         fs::read(&doc).unwrap();
         assert!(rx.recv_timeout(DEBOUNCE * 3).is_err());
+    }
+
+    #[test]
+    fn test_change_that_keeps_the_mtime_is_still_emitted() {
+        let dir = tempfile::tempdir().unwrap();
+        let dir = fs::canonicalize(dir.path()).unwrap();
+        let doc = dir.join("a.md");
+        fs::write(&doc, "# one").unwrap();
+        let mtime = fs::metadata(&doc).unwrap().modified().unwrap();
+        let registry = Arc::new(Mutex::new(Registry::default()));
+        let folder = registry.lock().unwrap().add(&doc).unwrap();
+        let (tx, rx) = mpsc::channel();
+        let mut debouncer = debouncer(registry, move |c| tx.send(c).unwrap()).unwrap();
+        debouncer
+            .watcher()
+            .watch(&folder, RecursiveMode::NonRecursive)
+            .unwrap();
+
+        fs::write(&doc, "# two").unwrap();
+        fs::File::options()
+            .write(true)
+            .open(&doc)
+            .unwrap()
+            .set_modified(mtime)
+            .unwrap();
+        rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        // Same mtime as the last report, different content length (`cp -p`, coarse clocks).
+        fs::write(&doc, "# three, longer").unwrap();
+        fs::File::options()
+            .write(true)
+            .open(&doc)
+            .unwrap()
+            .set_modified(mtime)
+            .unwrap();
+        rx.recv_timeout(Duration::from_secs(2)).unwrap();
     }
 
     #[test]
