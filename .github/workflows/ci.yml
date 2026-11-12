@@ -126,7 +126,7 @@ jobs:
       - run: npm ci
       # generate_context! reads the frontend bundle.
       - run: npm run build
-      - run: cargo test export
+      - run: cargo test -- export scope image
         working-directory: src-tauri
       # An installer to check the PDF export by hand on Windows.
       - run: npm run tauri build -- --bundles nsis --config '{"bundle":{"createUpdaterArtifacts":false}}'
@@ -156,7 +156,7 @@ jobs:
       - run: npm ci
       # generate_context! reads the frontend bundle.
       - run: npm run build
-      - run: cargo test export
+      - run: cargo test -- export scope image
         working-directory: src-tauri
       # A disk image to check the PDF export by hand on macOS.
       - run: npm run tauri build -- --target universal-apple-darwin --bundles dmg --config '{"bundle":{"createUpdaterArtifacts":false}}'
