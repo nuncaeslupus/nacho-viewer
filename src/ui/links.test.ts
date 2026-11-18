@@ -100,6 +100,25 @@ describe("links", () => {
     expect(resolvePath("/n/a.md", "../../x.md")).toBe("/x.md");
   });
 
+  it("test_links_resolve_against_windows_paths", () => {
+    const from = "C:\\Users\\me\\notes\\a.md";
+    expect(resolvePath(from, "b.md")).toBe("C:\\Users\\me\\notes\\b.md");
+    expect(resolvePath(from, "../x/c.md")).toBe("C:\\Users\\me\\x\\c.md");
+    expect(resolvePath(from, "sub/../d.md")).toBe("C:\\Users\\me\\notes\\d.md");
+    expect(resolvePath(from, "/top.md")).toBe("C:\\top.md");
+    expect(resolvePath(from, "D:/other/e.md")).toBe("D:\\other\\e.md");
+    expect(resolvePath(from, "../../../../../f.md")).toBe("C:\\f.md");
+    expect(resolvePath("\\\\srv\\share\\dir\\a.md", "b.md")).toBe("\\\\srv\\share\\dir\\b.md");
+    expect(route(link("[x](b.md#h)"), from, "click")).toEqual({
+      type: "navigate",
+      entry: entry("C:\\Users\\me\\notes\\b.md", "h"),
+    });
+    expect(route(link("[[My Page]]"), from, "click")).toEqual({
+      type: "navigate",
+      entry: entry("C:\\Users\\me\\notes\\My Page.md", "", ["C:\\Users\\me\\notes\\My-Page.md"]),
+    });
+  });
+
   it("test_history_back_after_two_links_returns_first", async () => {
     const files = {
       "/n/a.md": "# A\n\n[to b](b.md)",

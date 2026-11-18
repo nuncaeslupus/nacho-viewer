@@ -108,7 +108,7 @@ jobs:
             src-tauri/target/release/bundle/appimage/*.AppImage
           retention-days: 7
 
-  # Export on Windows (S-4 T4) prints through WebView2: build that path and run the export tests there.
+  # Export on Windows (S-4 T4) prints through WebView2: build that path and run the Rust tests there (path, scope and export).
   windows:
     runs-on: windows-latest
     timeout-minutes: 30
@@ -126,7 +126,7 @@ jobs:
       - run: npm ci
       # generate_context! reads the frontend bundle.
       - run: npm run build
-      - run: cargo test export
+      - run: cargo test
         working-directory: src-tauri
       # An installer to check the PDF export by hand on Windows.
       - run: npm run tauri build -- --bundles nsis --config '{"bundle":{"createUpdaterArtifacts":false}}'
@@ -136,7 +136,7 @@ jobs:
           path: src-tauri/target/release/bundle/nsis/*.exe
           retention-days: 7
 
-  # Export on macOS (S-4 T5) prints through WKWebView: build that path and run the export tests there.
+  # Export on macOS (S-4 T5) prints through WKWebView: build that path and run the Rust tests there (path, scope and export).
   macos:
     runs-on: macos-latest
     timeout-minutes: 45
@@ -156,7 +156,7 @@ jobs:
       - run: npm ci
       # generate_context! reads the frontend bundle.
       - run: npm run build
-      - run: cargo test export
+      - run: cargo test
         working-directory: src-tauri
       # A disk image to check the PDF export by hand on macOS.
       - run: npm run tauri build -- --target universal-apple-darwin --bundles dmg --config '{"bundle":{"createUpdaterArtifacts":false}}'

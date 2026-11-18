@@ -16,14 +16,14 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 use tauri::http::Response;
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
-use tauri_plugin_dialog::{DialogExt, FilePath};
+use tauri_plugin_dialog::{DialogExt, FilePath, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
 
 pub struct AppState {
     scope: Mutex<Scope>,
     watched: Arc<Mutex<Registry>>,
     debouncer: Mutex<Debouncer<RecommendedWatcher>>,
-    pending: Mutex<Vec<String>>,
+    launch: Mutex<LaunchFiles>,
     /// The Export dialog's last answer: the only path `export_pdf` writes.
     export_path: Mutex<Option<PathBuf>>,
     /// The last PDF saved, so the next Export starts in its folder.
@@ -58,7 +58,7 @@ impl AppState {
             scope: Mutex::new(scope),
             watched,
             debouncer: Mutex::new(debouncer),
-            pending: Mutex::new(Vec::new()),
+            launch: Mutex::new(LaunchFiles::default()),
             export_path: Mutex::new(None),
             last_export: Mutex::new(None),
             config_dir,
@@ -83,11 +83,62 @@ impl AppState {
     /// Files from this launch's command line, held until the frontend asks for them.
     pub fn open_at_launch<S: AsRef<OsStr>>(&self, args: impl IntoIterator<Item = S>, cwd: &Path) {
         let paths = self.open(document::paths_from_args(args, cwd));
-        lock(&self.pending).extend(paths);
+        lock(&self.launch).pending.extend(paths);
+    }
+
+    /// Files the OS hands over while running (macOS delivers Finder's Open and Open With as an
+    /// Apple Event, not as arguments): the `open-files` payload, or `None` when they were held for
+    /// the frontend's first `take_open_files`.
+    pub fn opened(&self, urls: &[url::Url]) -> Option<OpenFiles> {
+        let paths = self.open(paths_from_urls(urls));
+        lock(&self.launch).route(paths)
     }
 
     fn config_path(&self) -> PathBuf {
         self.config_dir.join("config.json")
+    }
+}
+
+/// Files in `file:` URLs; other schemes and malformed URLs are skipped.
+pub fn paths_from_urls(urls: &[url::Url]) -> Vec<PathBuf> {
+    urls.iter().filter_map(|u| u.to_file_path().ok()).collect()
+}
+
+/// Files from before the frontend listens. An `open-files` event sent in that time would find no
+/// listener, so they wait for `take_open_files`; once it has run, they are sent as events.
+#[derive(Default)]
+struct LaunchFiles {
+    pending: Vec<String>,
+    taken: bool,
+}
+
+impl LaunchFiles {
+    fn route(&mut self, paths: Vec<String>) -> Option<OpenFiles> {
+        if self.taken {
+            return Some(OpenFiles { paths });
+        }
+        self.pending.extend(paths);
+        None
+    }
+
+    fn take(&mut self) -> Vec<String> {
+        self.taken = true;
+        std::mem::take(&mut self.pending)
+    }
+}
+
+/// The OS asked to open `urls` (macOS only): the same route as a second launch's arguments.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+pub fn open_from_os<R: Runtime>(app: &AppHandle<R>, urls: &[url::Url]) {
+    let Some(state) = app.try_state::<AppState>() else {
+        return;
+    };
+    if let Some(files) = state.opened(urls) {
+        let _ = app.emit("open-files", files);
+    }
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.set_focus();
     }
 }
 
@@ -112,7 +163,7 @@ pub fn open_from_second_instance<R: Runtime>(app: &AppHandle<R>, argv: Vec<Strin
 #[tauri::command]
 pub fn take_open_files(state: State<'_, AppState>) -> OpenFiles {
     OpenFiles {
-        paths: std::mem::take(&mut *lock(&state.pending)),
+        paths: lock(&state.launch).take(),
     }
 }
 
@@ -169,10 +220,29 @@ pub async fn save_dialog<R: Runtime>(
     if let Some(dir) = start_folder(near.as_deref(), app.path().home_dir().ok()) {
         dialog = dialog.set_directory(dir);
     }
-    let picked = dialog
-        .blocking_save_file()
-        .and_then(|p| p.into_path().ok())
-        .map(export::with_pdf_extension);
+    let typed = dialog.blocking_save_file().and_then(|p| p.into_path().ok());
+    // GTK does not add the filter's extension, so `.pdf` is added here, after the dialog's own
+    // overwrite check: an existing `name.pdf` has to be confirmed again.
+    let picked = typed.and_then(|typed| {
+        let full = export::with_pdf_extension(typed.clone());
+        if export::needs_overwrite_confirmation(&typed, &full) {
+            let mut ask = app
+                .dialog()
+                .message(format!("{} already exists. Replace it?", full.display()))
+                .kind(MessageDialogKind::Warning)
+                .buttons(MessageDialogButtons::OkCancelCustom(
+                    "Replace".into(),
+                    "Cancel".into(),
+                ));
+            if let Some(window) = app.get_webview_window("main") {
+                ask = ask.parent(&window);
+            }
+            if !ask.blocking_show() {
+                return None;
+            }
+        }
+        Some(full)
+    });
     let shown = picked.as_ref().map(|p| p.display().to_string());
     if picked.is_some() {
         lock(&state.last_export).clone_from(&picked);
@@ -386,9 +456,33 @@ mod tests {
     use std::fs;
 
     #[test]
+    fn test_opened_urls_become_paths_and_other_urls_are_skipped() {
+        let dir = tempfile::tempdir().unwrap();
+        let doc = dir.path().join("My Notes").join("a.md");
+        let urls = [
+            url::Url::from_file_path(&doc).unwrap(),
+            "https://example.com/a.md".parse().unwrap(),
+        ];
+        assert!(urls[0].as_str().contains("My%20Notes"));
+        assert_eq!(paths_from_urls(&urls), [doc]);
+    }
+
+    #[test]
+    fn test_files_opened_by_the_os_wait_for_the_frontend_then_become_events() {
+        let mut launch = LaunchFiles::default();
+        // Before the frontend's first fetch an event would be lost, so the file is held.
+        assert!(launch.route(vec!["/n/a.md".into()]).is_none());
+        assert_eq!(launch.take(), ["/n/a.md"]);
+        let sent = launch.route(vec!["/n/b.md".into()]).unwrap();
+        assert_eq!(sent.paths, ["/n/b.md"]);
+        assert!(launch.take().is_empty());
+    }
+
+    #[test]
     fn test_open_dialog_picks_enter_scope_before_return() {
         let dir = tempfile::tempdir().unwrap();
-        let dir = fs::canonicalize(dir.path()).unwrap();
+        // The app's paths are plain (no `\\?\` prefix on Windows), so are the expected ones.
+        let dir = dunce::canonicalize(dir.path()).unwrap();
         let doc = dir.join("a.md");
         fs::write(&doc, "# a").unwrap();
         let mut scope = Scope::default();
@@ -426,7 +520,8 @@ mod tests {
     #[test]
     fn test_drop_emits_only_accepted_paths() {
         let dir = tempfile::tempdir().unwrap();
-        let dir = fs::canonicalize(dir.path()).unwrap();
+        // The app's paths are plain (no `\\?\` prefix on Windows), so are the expected ones.
+        let dir = dunce::canonicalize(dir.path()).unwrap();
         let doc = dir.join("a.md");
         fs::write(&doc, "# a").unwrap();
         let mut scope = Scope::default();

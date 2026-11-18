@@ -3,6 +3,7 @@ import footnote from "markdown-it-footnote";
 import { expect, test, vi } from "vitest";
 import fixture from "../../docs/fixtures/all-features.md?raw";
 import { bigDocument } from "../../e2e/big";
+import { strings } from "../strings";
 import { renderDocument } from "./document";
 import { enhance } from "./enhance";
 import { linearFootnoteTail } from "./extras";
@@ -108,7 +109,7 @@ test("test_superseded_render_leaves_the_root", async () => {
   expect(root.textContent).toContain("Second");
 });
 
-test("test_worker_that_never_answers_falls_back_after_timeout", async () => {
+test("test_worker_that_never_answers_fails_after_timeout_without_parsing_on_the_ui_thread", async () => {
   const terminate = vi.fn();
   vi.stubGlobal(
     "Worker",
@@ -123,15 +124,13 @@ test("test_worker_that_never_answers_falls_back_after_timeout", async () => {
   try {
     const root = document.createElement("article");
     const pending = renderDocument(root, bigDocument(100_000));
+    const outcome = expect(pending).rejects.toThrow(strings.renderTimedOut);
     await Promise.resolve();
     expect(root.childElementCount).toBe(0);
     vi.advanceTimersByTime(10_000);
-    const rendered = await pending;
+    await outcome;
     expect(terminate).toHaveBeenCalled();
-    expect(root.querySelectorAll("h2").length).toBeGreaterThan(10);
-    // Laying out the boxes outlives the render; left running, it touches `document` after
-    // the environment is torn down.
-    await rendered.settled;
+    expect(root.childElementCount).toBe(0);
   } finally {
     vi.useRealTimers();
     vi.unstubAllGlobals();
