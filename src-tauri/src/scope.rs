@@ -217,7 +217,7 @@ mod tests {
     #[test]
     fn test_recent_file_grants_no_folder_until_opened() {
         let root = tempfile::tempdir().unwrap();
-        let notes = fs::canonicalize(root.path()).unwrap().join("notes");
+        let notes = dunce::canonicalize(root.path()).unwrap().join("notes");
         fs::create_dir_all(&notes).unwrap();
         fs::write(notes.join("readme.md"), "# hi").unwrap();
         fs::write(notes.join("pic.png"), "x").unwrap();
@@ -240,7 +240,7 @@ mod tests {
     #[test]
     fn test_broad_folder_is_not_granted_recursively() {
         let root = tempfile::tempdir().unwrap();
-        let home = fs::canonicalize(root.path()).unwrap();
+        let home = dunce::canonicalize(root.path()).unwrap();
         fs::create_dir_all(home.join("deep/er")).unwrap();
         fs::write(home.join("notes.md"), "# n").unwrap();
         fs::write(home.join("pic.png"), "x").unwrap();
@@ -258,7 +258,7 @@ mod tests {
     #[test]
     fn test_read_document_outside_scope_not_permitted() {
         let root = tempfile::tempdir().unwrap();
-        let root = fs::canonicalize(root.path()).unwrap();
+        let root = dunce::canonicalize(root.path()).unwrap();
         let notes = root.join("notes");
         let secret = root.join("secret");
         fs::create_dir_all(notes.join("sub")).unwrap();
@@ -315,7 +315,7 @@ mod tests {
     #[test]
     fn test_read_svg_scoped_capped_regular_files_only() {
         let root = tempfile::tempdir().unwrap();
-        let root = fs::canonicalize(root.path()).unwrap();
+        let root = dunce::canonicalize(root.path()).unwrap();
         let notes = root.join("notes");
         let secret = root.join("secret");
         fs::create_dir_all(notes.join("img")).unwrap();
