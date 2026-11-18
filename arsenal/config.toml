@@ -146,12 +146,9 @@ verification = "balanced"
 attribution = true
 
 branch-protection = "applied"
-
 bot-triggers = ["coderabbitai[bot]=@coderabbitai review"]
-
 review-bots = ["coderabbitai[bot]"]
-
-setup-interview = "2026-11-11"
+setup-interview = "2026-11-18"
 
 [models]
 orchestrator = ""
