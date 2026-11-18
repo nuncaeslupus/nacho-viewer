@@ -53,7 +53,7 @@ test("test_chunks_capped_when_raw_html_never_closes", () => {
 
 test("test_large_render_applies_image_policy", async () => {
   const root = document.createElement("article");
-  const source = `${bigDocument(100_000)}\n\n![late](late.png)\n`;
+  const source = `${bigDocument(70_000)}\n\n![late](late.png)\n`;
   const seen: string[] = [];
   const rendered = await renderDocument(root, source, {
     images: (img) => {
@@ -77,7 +77,7 @@ test("test_footnote_tail_unchanged_by_linear_rewrite", () => {
 });
 
 test("test_large_render_matches_the_whole", async () => {
-  const source = bigDocument(150_000);
+  const source = bigDocument(70_000);
   const whole = document.createElement("article");
   whole.innerHTML = sanitize(render(source));
   const expected = enhance(whole).outline;

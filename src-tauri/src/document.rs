@@ -107,16 +107,25 @@ fn mtime_ms(meta: &fs::Metadata) -> u64 {
         .map_or(0, |d| d.as_millis() as u64)
 }
 
-/// Absolute paths from command-line arguments, resolved against `cwd`; flags are skipped.
+/// Absolute paths from command-line arguments, resolved against `cwd`; flags are skipped, and
+/// everything after a `--` is a path, so a file named `-draft.md` can be opened.
 pub fn paths_from_args<I, S>(args: I, cwd: &Path) -> Vec<PathBuf>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
     // ponytail: no `file://` URIs; the .desktop entry passes plain paths (%F).
+    let mut only_paths = false;
     args.into_iter()
         .map(|a| Path::new(a.as_ref()).to_path_buf())
-        .filter(|p| !p.to_string_lossy().starts_with('-'))
+        .filter(|p| {
+            let arg = p.to_string_lossy();
+            if !only_paths && arg == "--" {
+                only_paths = true;
+                return false;
+            }
+            only_paths || !arg.starts_with('-')
+        })
         .map(|p| cwd.join(p))
         .collect()
 }
@@ -171,6 +180,11 @@ mod tests {
         assert_eq!(
             paths,
             [Path::new("/home/u/a.md"), Path::new("/abs/b.md")].map(Path::to_path_buf)
+        );
+        let paths = paths_from_args(["-x", "--", "-draft.md", "--"], cwd);
+        assert_eq!(
+            paths,
+            [Path::new("/home/u/-draft.md"), Path::new("/home/u/--")].map(Path::to_path_buf)
         );
     }
 }
