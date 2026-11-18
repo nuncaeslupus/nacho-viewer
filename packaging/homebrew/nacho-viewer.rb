@@ -16,6 +16,7 @@ cask "nacho-viewer" do
 
   zap trash: [
     "~/Library/Application Support/io.github.nuncaeslupus.NachoViewer",
+    "~/Library/Application Support/nacho-viewer",
     "~/Library/Caches/io.github.nuncaeslupus.NachoViewer",
     "~/Library/WebKit/io.github.nuncaeslupus.NachoViewer",
   ]

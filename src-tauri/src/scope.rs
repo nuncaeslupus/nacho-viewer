@@ -59,6 +59,13 @@ impl Scope {
         }
     }
 
+    /// The last tab of `folder` closed: its tree is no longer readable. The files stay documents
+    /// (as a recent file does), so reopening one grants the folder again.
+    pub fn revoke_folder(&mut self, folder: &Path) {
+        self.folders.remove(folder);
+        self.flat_folders.remove(folder);
+    }
+
     pub fn is_opened(&self, path: &Path) -> bool {
         resolve(path).is_some_and(|p| self.files.contains(&p))
     }
@@ -235,6 +242,23 @@ mod tests {
         let mut scope = Scope::default();
         scope.promote(&notes.join("readme.md"));
         assert!(scope.check_image(&notes.join("pic.png")).is_err());
+    }
+
+    #[test]
+    fn test_revoked_folder_is_closed_until_a_document_is_opened_again() {
+        let root = tempfile::tempdir().unwrap();
+        let notes = dunce::canonicalize(root.path()).unwrap().join("notes");
+        fs::create_dir_all(&notes).unwrap();
+        fs::write(notes.join("readme.md"), "# hi").unwrap();
+        fs::write(notes.join("pic.png"), "x").unwrap();
+
+        let mut scope = Scope::default();
+        scope.allow(&notes.join("readme.md")).unwrap();
+        scope.revoke_folder(&notes);
+        assert!(scope.check_image(&notes.join("pic.png")).is_err());
+        assert!(scope.check_document(&notes.join("readme.md")).is_ok());
+        scope.promote(&notes.join("readme.md"));
+        assert!(scope.check_image(&notes.join("pic.png")).is_ok());
     }
 
     #[test]

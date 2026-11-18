@@ -51,6 +51,13 @@ pub async fn check<R: Runtime>(app: &AppHandle<R>) -> Result<(), IpcError> {
 
 /// Downloads, verifies and installs the newer version, then restarts into it.
 pub async fn install<R: Runtime>(app: &AppHandle<R>) -> Result<(), IpcError> {
+    // Callable from the page regardless of the build, so it carries the same guard as `check`.
+    if !enabled() {
+        return Err(IpcError::new(
+            ErrorKind::Io,
+            "this build updates through its package",
+        ));
+    }
     let update = app
         .updater()
         .map_err(failed)?

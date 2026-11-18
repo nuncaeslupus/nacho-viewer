@@ -381,7 +381,13 @@ pub async fn read_svg(path: String, state: State<'_, AppState>) -> Result<Svg, I
 
 #[tauri::command]
 pub fn watch(path: String, state: State<'_, AppState>) -> Result<(), IpcError> {
-    let path = lock(&state.scope).check_document(Path::new(&path))?;
+    let path = {
+        let mut scope = lock(&state.scope);
+        let path = scope.check_document(Path::new(&path))?;
+        // Another tab's close may have just revoked this folder; this tab is open now.
+        scope.promote(&path);
+        path
+    };
     let Some(folder) = lock(&state.watched).add(&path) else {
         return Ok(());
     };
@@ -396,11 +402,14 @@ pub fn watch(path: String, state: State<'_, AppState>) -> Result<(), IpcError> {
 
 #[tauri::command]
 pub fn unwatch(path: String, state: State<'_, AppState>) {
-    let Some(path) = scope::resolve(Path::new(&path)) else {
-        return;
-    };
+    // The page passes the canonical path it was given; it is the registry key even when the
+    // file and its folder are gone and `resolve` can no longer find them.
+    let path = PathBuf::from(&path);
+    let path = scope::resolve(&path).unwrap_or(path);
     let folder = lock(&state.watched).remove(&path);
     if let Some(folder) = folder {
+        // The folder's last watched tab closed: its read grant ends with it.
+        lock(&state.scope).revoke_folder(&folder);
         let _ = lock(&state.debouncer).watcher().unwatch(&folder);
     }
 }
