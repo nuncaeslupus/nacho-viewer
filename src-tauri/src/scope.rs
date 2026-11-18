@@ -45,22 +45,16 @@ impl Scope {
     }
 
     /// A recent file from the config: readable as a document, but its folder stays closed until
-    /// the user opens it (`promote`), so a launch grants no folder trees.
+    /// the user opens it (`allow`, once `check_document` passed), so a launch grants no folder
+    /// trees.
     pub fn allow_recent(&mut self, path: &Path) {
         if let Some(path) = resolve(path).filter(|p| !p.is_dir()) {
             self.files.insert(path);
         }
     }
 
-    /// The user opened `path` (a recent file read for display): grant its folder as `allow` does.
-    pub fn promote(&mut self, path: &Path) {
-        if self.files.contains(path) {
-            self.allow(path);
-        }
-    }
-
-    /// The last tab of `folder` closed: its tree is no longer readable. The files stay documents
-    /// (as a recent file does), so reopening one grants the folder again.
+    /// The last tab of `folder` closed: its tree is no longer readable. Opened files stay
+    /// documents (as a recent file does), so reopening one grants the folder again.
     pub fn revoke_folder(&mut self, folder: &Path) {
         self.folders.remove(folder);
         self.flat_folders.remove(folder);
@@ -236,12 +230,8 @@ mod tests {
         assert!(scope.check_image(&notes.join("pic.png")).is_err());
         assert!(scope.check_document(&notes.join("other.md")).is_err());
 
-        scope.promote(&notes.join("readme.md"));
+        scope.allow(&notes.join("readme.md"));
         assert!(scope.check_image(&notes.join("pic.png")).is_ok());
-        // Promoting a file the scope never held grants nothing.
-        let mut scope = Scope::default();
-        scope.promote(&notes.join("readme.md"));
-        assert!(scope.check_image(&notes.join("pic.png")).is_err());
     }
 
     #[test]
@@ -257,8 +247,27 @@ mod tests {
         scope.revoke_folder(&notes);
         assert!(scope.check_image(&notes.join("pic.png")).is_err());
         assert!(scope.check_document(&notes.join("readme.md")).is_ok());
-        scope.promote(&notes.join("readme.md"));
+        scope.allow(&notes.join("readme.md"));
         assert!(scope.check_image(&notes.join("pic.png")).is_ok());
+    }
+
+    #[test]
+    fn test_linked_document_stays_readable_after_the_outer_folder_is_revoked() {
+        let root = tempfile::tempdir().unwrap();
+        let notes = dunce::canonicalize(root.path()).unwrap().join("notes");
+        fs::create_dir_all(notes.join("sub")).unwrap();
+        fs::write(notes.join("a.md"), "# a").unwrap();
+        fs::write(notes.join("sub/b.md"), "# b").unwrap();
+        fs::write(notes.join("sub/pic.png"), "x").unwrap();
+
+        let mut scope = Scope::default();
+        scope.allow(&notes.join("a.md")).unwrap();
+        // `b.md` is reached through a link: the folder grant admits it, and opening it records it.
+        let linked = scope.check_document(&notes.join("sub/b.md")).unwrap();
+        scope.allow(&linked).unwrap();
+        scope.revoke_folder(&notes);
+        assert!(scope.check_document(&linked).is_ok());
+        assert!(scope.check_image(&notes.join("sub/pic.png")).is_ok());
     }
 
     #[test]

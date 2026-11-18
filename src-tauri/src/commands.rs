@@ -366,8 +366,9 @@ pub async fn read_document(path: String, state: State<'_, AppState>) -> Result<D
     let path = {
         let mut scope = lock(&state.scope);
         let path = scope.check_document(Path::new(&path))?;
-        // A recent file the user just clicked: its folder opens now, not at launch.
-        scope.promote(&path);
+        // Opening records the document and grants its folder: a recent file's folder opens now,
+        // not at launch, and a linked document outlives the folder grant that admitted it.
+        scope.allow(&path);
         path
     };
     document::read_file(&path)
@@ -385,7 +386,7 @@ pub fn watch(path: String, state: State<'_, AppState>) -> Result<(), IpcError> {
         let mut scope = lock(&state.scope);
         let path = scope.check_document(Path::new(&path))?;
         // Another tab's close may have just revoked this folder; this tab is open now.
-        scope.promote(&path);
+        scope.allow(&path);
         path
     };
     let Some(folder) = lock(&state.watched).add(&path) else {
@@ -395,7 +396,11 @@ pub fn watch(path: String, state: State<'_, AppState>) -> Result<(), IpcError> {
         .watcher()
         .watch(&folder, RecursiveMode::NonRecursive);
     result.map_err(|e| {
-        lock(&state.watched).remove(&path);
+        // The page never unwatches a failed watch, so the folder's grant ends here when this
+        // was its only tab.
+        if let Some(folder) = lock(&state.watched).remove(&path) {
+            lock(&state.scope).revoke_folder(&folder);
+        }
         IpcError::new(ErrorKind::Io, format!("{}: {e}", folder.display()))
     })
 }

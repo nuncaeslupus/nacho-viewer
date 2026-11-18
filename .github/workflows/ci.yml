@@ -35,7 +35,7 @@ jobs:
             printf 'code=true\nnative=true\n' >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          files=$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename')
+          files=$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)')
           # Docs, status notes, the site and the arsenal are inputs to no job below.
           grep -qvE '^(docs|status|site|arsenal|claude-arsenal)/|\.md$' <<<"$files" && code=true || code=false
           # Installers and the cross-platform export tests only depend on the core and packaging.
@@ -70,9 +70,10 @@ jobs:
       - run: make lint test
 
   # Separate from `check` so packaging (a release build plus linuxdeploy) never slows the lint/test feedback.
+  # Also on frontend changes: the bundle embeds the frontend, so it can grow the .deb.
   package:
     needs: changes
-    if: needs.changes.outputs.native == 'true'
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
