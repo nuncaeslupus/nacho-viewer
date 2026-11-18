@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # man-db's trigger can stall apt on ubuntu-24.04 runners, and the mirror is sometimes slow.
       # ponytail: no apt cache; cache-apt-pkgs-action drops the -dev .so links and linking fails.
       - timeout-minutes: 20
@@ -22,7 +22,7 @@ jobs:
           sudo rm -f /var/lib/man-db/auto-update
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -43,14 +43,14 @@ jobs:
       # linuxdeploy is itself an AppImage; the runner has no libfuse2, so extract it instead of mounting.
       APPIMAGE_EXTRACT_AND_RUN: 1
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Same apt workaround as `check`: man-db's trigger can stall apt on ubuntu-24.04 runners.
       - timeout-minutes: 20
         run: |
           sudo rm -f /var/lib/man-db/auto-update
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -108,13 +108,13 @@ jobs:
             src-tauri/target/release/bundle/appimage/*.AppImage
           retention-days: 7
 
-  # Export on Windows (S-4 T4) prints through WebView2: build that path and run the export tests there.
+  # Export on Windows (S-4 T4) prints through WebView2: build that path and run the Rust tests there (path, scope and export).
   windows:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -126,7 +126,7 @@ jobs:
       - run: npm ci
       # generate_context! reads the frontend bundle.
       - run: npm run build
-      - run: cargo test export
+      - run: cargo test
         working-directory: src-tauri
       # An installer to check the PDF export by hand on Windows.
       - run: npm run tauri build -- --bundles nsis --config '{"bundle":{"createUpdaterArtifacts":false}}'
@@ -136,13 +136,13 @@ jobs:
           path: src-tauri/target/release/bundle/nsis/*.exe
           retention-days: 7
 
-  # Export on macOS (S-4 T5) prints through WKWebView: build that path and run the export tests there.
+  # Export on macOS (S-4 T5) prints through WKWebView: build that path and run the Rust tests there (path, scope and export).
   macos:
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -156,7 +156,7 @@ jobs:
       - run: npm ci
       # generate_context! reads the frontend bundle.
       - run: npm run build
-      - run: cargo test export
+      - run: cargo test
         working-directory: src-tauri
       # A disk image to check the PDF export by hand on macOS.
       - run: npm run tauri build -- --target universal-apple-darwin --bundles dmg --config '{"bundle":{"createUpdaterArtifacts":false}}'
@@ -180,8 +180,8 @@ jobs:
       # Playwright's Docker guidance: Chromium needs the host's IPC/shared memory to run at speed.
       options: --ipc=host
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
