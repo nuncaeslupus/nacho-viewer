@@ -108,11 +108,28 @@ fn carry_over(old: &Path, new: &Path) {
 }
 
 /// Reads the config. A missing or unreadable file gives the defaults and is left alone; a file
-/// that does not parse, or has an unknown version, is moved aside to a fresh backup first.
+/// that does not parse, or has no known version, is moved aside to a fresh backup first. A newer
+/// version (an older build run once) keeps the settings this build knows and ignores the rest;
+/// it is copied to `config.json.v<N>.bak` first, since saving from this build drops what it
+/// cannot read.
 pub fn load(path: &Path) -> Config {
     let Ok(text) = fs::read_to_string(path) else {
         return Config::default();
     };
+    if let Some(version) = newer_version(&text) {
+        // Reuse a backup that already holds this text; otherwise take the next free name.
+        let mut names = (0..1000).map(|n| match n {
+            0 => path.with_extension(format!("json.v{version}.bak")),
+            n => path.with_extension(format!("json.v{version}.{n}.bak")),
+        });
+        let free = names.find(|p| match fs::read_to_string(p) {
+            Ok(old) => old == text,
+            Err(_) => fs::symlink_metadata(p).is_err(),
+        });
+        if let Some(bak) = free.filter(|p| !p.exists()) {
+            let _ = fs::copy(path, bak);
+        }
+    }
     parse(&text).unwrap_or_else(|| {
         if let Some(bak) = free_backup(path) {
             let _ = fs::rename(path, bak);
@@ -131,12 +148,36 @@ fn free_backup(path: &Path) -> Option<PathBuf> {
         .find(|p| fs::symlink_metadata(p).is_err())
 }
 
+fn newer_version(text: &str) -> Option<u64> {
+    let value: Value = serde_json::from_str(text).ok()?;
+    value.get("version")?.as_u64().filter(|v| *v > VERSION)
+}
+
 fn parse(text: &str) -> Option<Config> {
     let value: Value = serde_json::from_str(text).ok()?;
-    if value.get("version")?.as_u64()? != VERSION {
+    let version = value.get("version")?.as_u64()?;
+    if version < VERSION {
         return None;
     }
-    serde_json::from_value::<Config>(value)
+    if version == VERSION {
+        return serde_json::from_value::<Config>(value)
+            .ok()
+            .map(Config::normalized);
+    }
+    // Newer: take each field this build knows on its own, so one value it cannot read (a new
+    // theme, say) costs only that setting.
+    let mut merged = serde_json::to_value(Config::default()).ok()?;
+    for (key, field) in value.as_object()? {
+        if merged.get(key).is_none() {
+            continue;
+        }
+        let mut trial = merged.clone();
+        trial[key] = field.clone();
+        if serde_json::from_value::<Config>(trial.clone()).is_ok() {
+            merged = trial;
+        }
+    }
+    serde_json::from_value::<Config>(merged)
         .ok()
         .map(Config::normalized)
 }
@@ -181,7 +222,7 @@ mod tests {
 
         assert_eq!(load(&path), Config::default());
 
-        let texts = [r#"{"version": 2, "theme": "dark"}"#, "{not json", "{}"];
+        let texts = [r#"{"version": 0, "theme": "dark"}"#, "{not json", "{}"];
         for text in texts {
             fs::write(&path, text).unwrap();
             assert_eq!(load(&path), Config::default(), "{text}");
@@ -194,6 +235,44 @@ mod tests {
         {
             assert_eq!(fs::read_to_string(dir.path().join(bak)).unwrap(), text);
         }
+    }
+
+    #[test]
+    fn test_config_from_a_newer_version_keeps_known_settings() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        let text = r#"{"version": 2, "theme": "dark", "remoteImages": true, "newThing": 3}"#;
+        fs::write(&path, text).unwrap();
+        let config = load(&path);
+        assert_eq!(config.theme, Theme::Dark);
+        assert!(config.remote_images);
+        assert_eq!(fs::read_to_string(&path).unwrap(), text);
+        assert!(!dir.path().join("config.json.bak").exists());
+        // Saving from this build drops `newThing`, so the newer file is kept aside, once.
+        let bak = dir.path().join("config.json.v2.bak");
+        assert_eq!(fs::read_to_string(&bak).unwrap(), text);
+        save(&path, &config).unwrap();
+        load(&path);
+        assert_eq!(fs::read_to_string(&bak).unwrap(), text);
+        // A different newer file gets its own backup; the same one is not copied again.
+        let other = r#"{"version": 2, "theme": "light"}"#;
+        fs::write(&path, other).unwrap();
+        load(&path);
+        load(&path);
+        let bak1 = dir.path().join("config.json.v2.1.bak");
+        assert_eq!(fs::read_to_string(&bak1).unwrap(), other);
+        assert!(!dir.path().join("config.json.v2.2.bak").exists());
+
+        // A value this build cannot read costs only that setting.
+        fs::write(
+            &path,
+            r#"{"version": 2, "theme": "sepia", "remoteImages": true}"#,
+        )
+        .unwrap();
+        let config = load(&path);
+        assert_eq!(config.theme, Theme::System);
+        assert!(config.remote_images);
+        assert!(path.exists());
     }
 
     #[test]

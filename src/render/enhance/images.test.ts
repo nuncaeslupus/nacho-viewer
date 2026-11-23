@@ -44,9 +44,13 @@ describe("imagePolicy", () => {
     expect(srcs).toContain("https://example.com/a.png");
     expect(srcs).toContain("https://example.com/b.png");
     expect(srcs).toContain("https://example.com/f.png");
-    expect(srcs).toContain("http://example.com/g.png");
+    expect(srcs).toContain("https://example.com/g.png");
+    expect(srcs).toContain("https://example.com/c.png");
+    expect(srcs.some((s) => s?.startsWith("http:"))).toBe(false);
     expect(srcs).toContain("https://example.com/h.png");
     expect(root.querySelector("source")?.getAttribute("srcset")).toBe("https://example.com/d.png");
+    const http = images('<img src="http://e.com/a.png" srcset="http://e.com/a2.png 2x">', true);
+    expect(http.querySelector("img")?.getAttribute("srcset")).toBe("https://e.com/a2.png 2x");
   });
 
   it("test_local_images_use_image_protocol_and_svgs_marked", () => {

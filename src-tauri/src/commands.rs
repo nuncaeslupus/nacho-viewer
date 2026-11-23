@@ -278,7 +278,7 @@ pub async fn preview_pdf<R: Runtime>(
     let file = Path::new(&name)
         .file_name()
         .ok_or_else(|| io(format!("{name} is not a file name")))?;
-    // ponytail: one PDF per document name stays in the cache; overwritten on the next preview.
+    // One PDF per document name stays in the cache until the next launch (`clear_previews`).
     let dir = app.path().app_cache_dir().map_err(|e| io(e.to_string()))?;
     std::fs::create_dir_all(&dir).map_err(|e| io(e.to_string()))?;
     let path = export::with_pdf_extension(dir.join(file));
@@ -289,6 +289,23 @@ pub async fn preview_pdf<R: Runtime>(
     app.opener()
         .open_path(path.to_string_lossy(), None::<&str>)
         .map_err(|e| io(e.to_string()))
+}
+
+/// Removes the previews a past run left in the cache folder: only top-level `.pdf` files, so
+/// whatever else lives there is untouched. A file still open elsewhere (Windows) is skipped.
+pub fn clear_previews(dir: &Path) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let is_pdf = path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("pdf"));
+        if is_pdf && entry.file_type().is_ok_and(|t| t.is_file()) {
+            let _ = std::fs::remove_file(path);
+        }
+    }
 }
 
 /// File › Print through the same page setup as Export; `false` asks the frontend to print itself.
@@ -469,6 +486,20 @@ pub async fn reveal_file(
 mod tests {
     use super::*;
     use std::fs;
+
+    #[test]
+    fn test_clear_previews_removes_only_top_level_pdfs() {
+        let dir = tempfile::tempdir().unwrap();
+        let d = dir.path();
+        std::fs::create_dir_all(d.join("sub")).unwrap();
+        for f in ["a.pdf", "B.PDF", "keep.txt", "sub/c.pdf"] {
+            std::fs::write(d.join(f), "x").unwrap();
+        }
+        clear_previews(d);
+        assert!(!d.join("a.pdf").exists() && !d.join("B.PDF").exists());
+        assert!(d.join("keep.txt").exists() && d.join("sub/c.pdf").exists());
+        clear_previews(&d.join("missing"));
+    }
 
     #[test]
     fn test_opened_urls_become_paths_and_other_urls_are_skipped() {

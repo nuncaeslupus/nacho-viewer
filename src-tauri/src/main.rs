@@ -35,6 +35,9 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            if let Ok(cache) = app.path().app_cache_dir() {
+                commands::clear_previews(&cache);
+            }
             let state = AppState::new(app.handle())?;
             let cwd = std::env::current_dir()?;
             state.open_at_launch(std::env::args_os().skip(1), &cwd);
