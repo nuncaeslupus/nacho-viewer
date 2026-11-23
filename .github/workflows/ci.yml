@@ -69,6 +69,17 @@ jobs:
       - run: npm ci
       - run: make lint test
 
+  # Known-vulnerable dependencies (review finding #18). Cheap, so it runs on every PR and push.
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: npm audit --omit=dev --audit-level=high
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - run: cargo install cargo-audit --locked
+      - run: cargo audit --file src-tauri/Cargo.lock
+
   # Separate from `check` so packaging (a release build plus linuxdeploy) never slows the lint/test feedback.
   # Also on frontend changes: the bundle embeds the frontend, so it can grow the .deb.
   package:
