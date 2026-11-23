@@ -68,6 +68,17 @@ The app is not code-signed yet, so SmartScreen may warn on first run: click **Mo
 The app is not notarized, so macOS blocks the first launch. Open **System Settings › Privacy &
 Security** and click **Open Anyway**, or run `xattr -dr com.apple.quarantine "/Applications/Nacho Viewer.app"`.
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+- Committers and approvers: [nuncaeslupus](https://github.com/nuncaeslupus)
+- Reviewers: [nuncaeslupus](https://github.com/nuncaeslupus), assisted by automated review
+
+Windows installers are built and signed only by this repository's release workflow, from tagged sources.
+
+**Privacy:** this program does not transfer any information to other networked systems unless the user asks it to. The one exception is the update check, which asks GitHub Releases whether a newer version exists.
+
 ## License
 
 [MIT](LICENSE)
