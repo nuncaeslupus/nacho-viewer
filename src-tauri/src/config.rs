@@ -109,11 +109,19 @@ fn carry_over(old: &Path, new: &Path) {
 
 /// Reads the config. A missing or unreadable file gives the defaults and is left alone; a file
 /// that does not parse, or has no known version, is moved aside to a fresh backup first. A newer
-/// version (an older build run once) keeps the settings this build knows and ignores the rest.
+/// version (an older build run once) keeps the settings this build knows and ignores the rest;
+/// it is copied to `config.json.v<N>.bak` first, since saving from this build drops what it
+/// cannot read.
 pub fn load(path: &Path) -> Config {
     let Ok(text) = fs::read_to_string(path) else {
         return Config::default();
     };
+    if let Some(version) = newer_version(&text) {
+        let bak = path.with_extension(format!("json.v{version}.bak"));
+        if fs::symlink_metadata(&bak).is_err() {
+            let _ = fs::copy(path, bak);
+        }
+    }
     parse(&text).unwrap_or_else(|| {
         if let Some(bak) = free_backup(path) {
             let _ = fs::rename(path, bak);
@@ -130,6 +138,11 @@ fn free_backup(path: &Path) -> Option<PathBuf> {
             n => path.with_extension(format!("json.{n}.bak")),
         })
         .find(|p| fs::symlink_metadata(p).is_err())
+}
+
+fn newer_version(text: &str) -> Option<u64> {
+    let value: Value = serde_json::from_str(text).ok()?;
+    value.get("version")?.as_u64().filter(|v| *v > VERSION)
 }
 
 fn parse(text: &str) -> Option<Config> {
@@ -227,6 +240,12 @@ mod tests {
         assert!(config.remote_images);
         assert_eq!(fs::read_to_string(&path).unwrap(), text);
         assert!(!dir.path().join("config.json.bak").exists());
+        // Saving from this build drops `newThing`, so the newer file is kept aside, once.
+        let bak = dir.path().join("config.json.v2.bak");
+        assert_eq!(fs::read_to_string(&bak).unwrap(), text);
+        save(&path, &config).unwrap();
+        load(&path);
+        assert_eq!(fs::read_to_string(&bak).unwrap(), text);
 
         // A value this build cannot read costs only that setting.
         fs::write(
