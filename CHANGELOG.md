@@ -3,6 +3,15 @@
 Notable changes per release. The full list is on
 [GitHub Releases](https://github.com/nuncaeslupus/nacho-viewer/releases).
 
+## 0.1.4 — 2026-11-23
+
+- The interface comes in 14 languages: English, Spanish, German, French, Italian, Portuguese,
+  Chinese, Japanese, Hindi, Bengali, Indonesian, Korean, Turkish and Vietnamese. It follows the
+  system language by default, and Settings › Language changes it. The user guide is translated
+  too.
+- Security: dependency updates for RUSTSEC-2026-0594 (cookie) and RUSTSEC-2026-0592 (url).
+- A `SECURITY.md` explains how to report a vulnerability privately.
+
 ## 0.1.3 — 2026-11-23
 
 - Security: remote images are off by default. Read access is narrower: broad folders such as
