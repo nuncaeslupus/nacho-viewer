@@ -108,5 +108,7 @@ describe("strings (D-14)", () => {
     expect(resolveLanguage("auto", ["sv-SE", "fr-CA"])).toBe("fr");
     expect(resolveLanguage("auto", ["sv-SE"])).toBe("en");
     expect(resolveLanguage("xx", ["es"])).toBe("en");
+    expect(resolveLanguage("constructor", [])).toBe("en");
+    expect(resolveLanguage("auto", ["__proto__"])).toBe("en");
   });
 });

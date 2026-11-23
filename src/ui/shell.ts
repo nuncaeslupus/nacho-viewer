@@ -332,6 +332,12 @@ export class Shell {
     );
     this.update();
     this.guidePath = reopen.guide;
+    // A guide kept across a language switch is written again, in the language loaded now.
+    if (reopen.guide) {
+      const guide = await this.backend.helpFile(language).catch(() => reopen.guide);
+      reopen.paths = reopen.paths.map((p) => (p === reopen.guide ? guide : p));
+      this.guidePath = guide;
+    }
     await this.openPaths([...reopen.paths, ...(await this.backend.takeOpenFiles())]);
     if (reopen.settings) this.openSettings();
     // After first paint, so the request cannot delay it; offline is no notice (D-31).
@@ -633,15 +639,28 @@ export class Shell {
   /** Saves the language and reloads the window in it, with its tabs and Settings reopened. */
   private async setLanguage(code: string): Promise<void> {
     if (code === this.language) return;
+    const previous = this.language;
     this.language = code;
     this.update();
     if (!this.config || !this.keepLanguage()) {
+      this.language = previous;
+      this.keepLanguage();
+      this.update();
       this.show(strings.notices.settingNotSaved);
       return;
     }
     this.writeSettings();
-    await this.saving;
-    this.reloadReopening();
+    const saved = await this.saving;
+    // A newer pick reloads after its own write.
+    if (this.language !== code) return;
+    if (saved) {
+      this.reloadReopening();
+      return;
+    }
+    this.language = previous;
+    if (this.config) this.config = { ...this.config, language: previous };
+    this.keepLanguage();
+    this.update();
   }
 
   /** Mirrors the language setting where the next load reads it; false if it could not. */
@@ -880,7 +899,7 @@ export class Shell {
   }
 
   /** The last config write, so a reload can wait for it. */
-  private saving: Promise<void> = Promise.resolve();
+  private saving: Promise<boolean> = Promise.resolve(true);
 
   private writeSettings(): void {
     clearTimeout(this.saveTimer);
@@ -894,9 +913,13 @@ export class Shell {
       wideSheet: this.wide,
       language: this.language,
     };
-    this.saving = this.backend
-      .setConfig(this.config)
-      .catch(() => this.show(strings.notices.settingNotSaved));
+    this.saving = this.backend.setConfig(this.config).then(
+      () => true,
+      () => {
+        this.show(strings.notices.settingNotSaved);
+        return false;
+      },
+    );
   }
 
   /** Zooms the sheets; the active tab keeps the heading the reader is at. */

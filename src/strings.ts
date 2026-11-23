@@ -58,7 +58,7 @@ export function resolveLanguage(
   setting: string | null | undefined,
   system: readonly string[],
 ): Language {
-  const known = (code: string) => (code in LANGUAGES ? (code as Language) : undefined);
+  const known = (code: string) => (Object.hasOwn(LANGUAGES, code) ? (code as Language) : undefined);
   if (setting && setting !== "auto") return known(setting) ?? "en";
   for (const tag of system) {
     const code = known(tag.toLowerCase().split("-")[0]);

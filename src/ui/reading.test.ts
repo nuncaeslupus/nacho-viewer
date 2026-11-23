@@ -256,6 +256,39 @@ describe("reading tools", () => {
     localStorage.clear();
   });
 
+  it("test_language_stays_when_it_cannot_be_saved", async () => {
+    const fake = fakeBackend({});
+    const root = document.createElement("div");
+    let reloads = 0;
+    const shell = new Shell(root, fake.backend, () => reloads++);
+    shells.push(shell);
+    await shell.start();
+    fake.state.fail.setConfig = new Error("read-only");
+    press({ key: ",", ctrlKey: true });
+    click(root.querySelector(".settings-dialog [data-language=es]"));
+    await settle();
+    await settle();
+    expect(reloads).toBe(0);
+    expect(root.querySelector(".notice")?.textContent).toBe(strings.notices.settingNotSaved);
+    expect(
+      root.querySelector(".settings-dialog [data-language=auto]")?.getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(localStorage.getItem(LANGUAGE_KEY)).toBe("auto");
+    localStorage.clear();
+  });
+
+  it("test_guide_reopened_after_a_reload_is_written_again", async () => {
+    const fake = fakeBackend({ "/old/Guide.md": "# Old" });
+    sessionStorage.setItem(
+      "nacho-viewer.reopen",
+      JSON.stringify({ paths: ["/old/Guide.md"], guide: "/old/Guide.md" }),
+    );
+    const shell = new Shell(document.createElement("div"), fake.backend);
+    shells.push(shell);
+    await shell.start();
+    expect(fake.state.guideLanguage).toBe("en");
+  });
+
   it("test_saved_language_reloads_a_window_loaded_in_another", async () => {
     const fake = fakeBackend({});
     fake.state.config.language = "de";
