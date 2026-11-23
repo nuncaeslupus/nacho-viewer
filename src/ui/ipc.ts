@@ -13,6 +13,8 @@ export interface Config {
   wideSheet: boolean;
   /** Settings › Style: the document's faces and spacing. */
   style: string;
+  /** Settings › Language: `auto` (the system's) or a UI language code. */
+  language: string;
   recentFiles: string[];
 }
 
@@ -71,7 +73,8 @@ export interface Backend {
   /** Opens the system file manager at an open document, with it selected. */
   revealFile(path: string): Promise<void>;
   /** Writes the bundled user guide to disk and returns its path, ready to open. */
-  helpFile(): Promise<string>;
+  /** Writes the guide in `language` and returns its path. */
+  helpFile(language: string): Promise<string>;
   /** The version of the running app. */
   appVersion(): Promise<string>;
   /** The window's own buttons, drawn in the tab strip; absent where the system draws them. */
@@ -108,7 +111,7 @@ export const tauriBackend: Backend = {
   readUserCss: () => invoke<{ css: string | null }>("read_user_css").then((r) => r.css),
   openExternal: (url) => invoke<void>("open_external", { url }),
   revealFile: (path) => invoke<void>("reveal_file", { path }),
-  helpFile: () => invoke<string>("help_file"),
+  helpFile: (language) => invoke<string>("help_file", { language }),
   appVersion: getVersion,
   window: {
     minimize: () => getCurrentWindow().minimize(),

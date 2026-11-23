@@ -3,7 +3,7 @@ import { renderDocument } from "../render/document";
 import { blockRemoteImages, imagePolicy } from "../render/enhance/images";
 import { diagramsForPaper } from "../render/enhance/mermaid";
 import { inlineSvgs } from "../render/enhance/svg";
-import { strings } from "../strings";
+import { LANGUAGE_KEY, LANGUAGES, language, resolveLanguage, strings } from "../strings";
 import { applyUserCss } from "../themes/user-css";
 import { type ActionId, actions, bar, matchesKey, menus } from "./definition";
 import { clearMatches, highlightMatches } from "./find";
@@ -192,6 +192,9 @@ export class Shell {
   private theme: Config["theme"] = "system";
   private style: (typeof STYLES)[number] = "classic";
   private styleItems: HTMLElement[] = [];
+  /** Settings › Language: `auto` or a code. The strings were picked from it at load. */
+  private language = "auto";
+  private languageItems: HTMLElement[] = [];
   private zoom = 100;
   private noticeTimer: ReturnType<typeof setTimeout> | undefined;
   private dialogOpen = false;
@@ -312,13 +315,29 @@ export class Shell {
       this.wide = this.config.wideSheet === true;
       const style = STYLES.find((s) => s === this.config?.style);
       this.style = style ?? "classic";
+      this.language = this.config.language ?? "auto";
+      // The window picked its strings before the config was read; a stale pick reloads once.
+      if (this.keepLanguage() && resolveLanguage(this.language, navigator.languages) !== language) {
+        try {
+          sessionStorage.setItem(REOPEN, JSON.stringify(reopen));
+        } catch {}
+        this.reloadWindow();
+        return;
+      }
     }
+    this.root.ownerDocument.documentElement.lang = language;
     await this.backend.readUserCss().then(
       (css) => applyUserCss(this.root.ownerDocument, css),
       () => this.show(strings.notices.userCssUnavailable),
     );
     this.update();
     this.guidePath = reopen.guide;
+    // A guide kept across a language switch is written again, in the language loaded now.
+    if (reopen.guide) {
+      const guide = await this.backend.helpFile(language).catch(() => reopen.guide);
+      reopen.paths = reopen.paths.map((p) => (p === reopen.guide ? guide : p));
+      this.guidePath = guide;
+    }
     await this.openPaths([...reopen.paths, ...(await this.backend.takeOpenFiles())]);
     if (reopen.settings) this.openSettings();
     // After first paint, so the request cannot delay it; offline is no notice (D-31).
@@ -586,6 +605,21 @@ export class Shell {
     arrowKeys(themes, this.themeItems);
     arrowKeys(styles, this.styleItems);
 
+    const languages = h("div", "settings-group");
+    languages.setAttribute("role", "radiogroup");
+    languages.setAttribute("aria-label", s.language);
+    const choices: [string, string][] = [["auto", s.languageSystem], ...Object.entries(LANGUAGES)];
+    this.languageItems = choices.map(([code, name]) => {
+      const item = h("button", "menu-item", name);
+      item.setAttribute("role", "radio");
+      item.dataset.language = code;
+      if (code !== "auto") item.lang = code;
+      item.addEventListener("click", () => void this.setLanguage(code));
+      return item;
+    });
+    languages.append(...this.languageItems);
+    arrowKeys(languages, this.languageItems);
+
     const remote = h("button", "menu-item", strings.actions.remoteImages);
     remote.setAttribute("role", "checkbox");
     remote.dataset.action = "remoteImages";
@@ -597,9 +631,46 @@ export class Shell {
     done.addEventListener("click", () => this.closeModal());
     row.append(done);
     panel.append(h("h2", "", s.title), h("h3", "", s.theme), themes, h("h3", "", s.style), styles);
-    panel.append(h("h3", "", s.images), remote, row);
+    panel.append(h("h3", "", s.language), languages, h("h3", "", s.images), remote, row);
     this.showModal(panel, this.themeItems.find((i) => i.dataset.theme === this.theme) ?? done);
     this.update();
+  }
+
+  /** Saves the language and reloads the window in it, with its tabs and Settings reopened. */
+  private async setLanguage(code: string): Promise<void> {
+    if (code === this.language) return;
+    const previous = this.language;
+    this.language = code;
+    this.update();
+    if (!this.config || !this.keepLanguage()) {
+      this.language = previous;
+      this.keepLanguage();
+      this.update();
+      this.show(strings.notices.settingNotSaved);
+      return;
+    }
+    this.writeSettings();
+    const saved = await this.saving;
+    // A newer pick reloads after its own write.
+    if (this.language !== code) return;
+    if (saved) {
+      this.reloadReopening();
+      return;
+    }
+    this.language = previous;
+    if (this.config) this.config = { ...this.config, language: previous };
+    this.keepLanguage();
+    this.update();
+  }
+
+  /** Mirrors the language setting where the next load reads it; false if it could not. */
+  private keepLanguage(): boolean {
+    try {
+      localStorage.setItem(LANGUAGE_KEY, this.language);
+      return localStorage.getItem(LANGUAGE_KEY) === this.language;
+    } catch {
+      return false;
+    }
   }
 
   /** Shows `panel` over the whole window; a click beside it or Esc closes it. The wheel still scrolls the page. */
@@ -827,6 +898,9 @@ export class Shell {
     this.saveTimer = setTimeout(() => this.writeSettings(), delay);
   }
 
+  /** The last config write, so a reload can wait for it. */
+  private saving: Promise<boolean> = Promise.resolve(true);
+
   private writeSettings(): void {
     clearTimeout(this.saveTimer);
     this.saveTimer = undefined;
@@ -837,10 +911,15 @@ export class Shell {
       style: this.style,
       defaultZoom: this.zoom,
       wideSheet: this.wide,
+      language: this.language,
     };
-    void this.backend
-      .setConfig(this.config)
-      .catch(() => this.show(strings.notices.settingNotSaved));
+    this.saving = this.backend.setConfig(this.config).then(
+      () => true,
+      () => {
+        this.show(strings.notices.settingNotSaved);
+        return false;
+      },
+    );
   }
 
   /** Zooms the sheets; the active tab keeps the heading the reader is at. */
@@ -1005,7 +1084,7 @@ export class Shell {
   /** More › User guide. Not a recent file: its folder would become where the dialogs start. */
   private async openGuide(): Promise<void> {
     try {
-      this.guidePath = await this.backend.helpFile();
+      this.guidePath = await this.backend.helpFile(language);
       await this.openPaths([this.guidePath]);
     } catch {
       this.show(strings.notices.helpFailed);
@@ -1603,6 +1682,10 @@ export class Shell {
     for (const item of this.styleItems) {
       item.setAttribute("aria-checked", String(item.dataset.style === this.style));
       item.tabIndex = item.dataset.style === this.style ? 0 : -1;
+    }
+    for (const item of this.languageItems) {
+      item.setAttribute("aria-checked", String(item.dataset.language === this.language));
+      item.tabIndex = item.dataset.language === this.language ? 0 : -1;
     }
     this.remoteItem?.setAttribute("aria-checked", String(this.config?.remoteImages ?? false));
     this.sourceItem?.setAttribute("aria-checked", String(this.active?.source.hidden === false));

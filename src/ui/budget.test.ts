@@ -19,7 +19,8 @@ describe("simplicity budget (D-11)", () => {
     const toolbarButtons = barButtons().length;
     // Nine since the page-width toggle beside zoom, at the owner's request.
     expect(toolbarButtons).toBeLessThanOrEqual(9);
-    expect(settings.length).toBeLessThanOrEqual(4);
+    // Five since Settings › Language, at the owner's request.
+    expect(settings.length).toBeLessThanOrEqual(5);
     expect(menus.length).toBeLessThanOrEqual(4);
 
     // The shell draws exactly what the definition says.

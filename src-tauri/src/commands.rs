@@ -303,11 +303,12 @@ pub async fn print_document<R: Runtime>(app: AppHandle<R>) -> Result<bool, IpcEr
         .map_err(|e| IpcError::new(ErrorKind::Io, e.to_string()))?
 }
 
-/// Writes the guide to the app's data folder and brings it into scope.
+/// Writes the guide, in the UI's `language`, to the app's data folder and brings it into scope.
 #[tauri::command]
 pub async fn help_file<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, AppState>,
+    language: String,
 ) -> Result<String, IpcError> {
     let failed = |message: String| IpcError::new(ErrorKind::Io, message);
     let dir = app
@@ -315,7 +316,7 @@ pub async fn help_file<R: Runtime>(
         .app_local_data_dir()
         .map_err(|e| failed(e.to_string()))?
         .join("help");
-    let guide = help::write(&dir).map_err(|e| IpcError::from_io(&e, &dir))?;
+    let guide = help::write(&dir, &language).map_err(|e| IpcError::from_io(&e, &dir))?;
     state
         .open([guide])
         .pop()

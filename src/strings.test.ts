@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { strings } from "./strings";
+import { en } from "./locales/en";
+import { LANGUAGES, LOCALES, resolveLanguage, strings } from "./strings";
 import { actions } from "./ui/definition";
 import { fakeBackend, settle } from "./ui/fake-backend";
 import { Shell } from "./ui/shell";
@@ -37,6 +38,7 @@ describe("strings (D-14)", () => {
     const keys = Object.values(actions).map((a) => a.key);
     const allowed = new Set([
       ...stringValues(strings),
+      ...Object.values(LANGUAGES),
       strings.zoomPercent(100),
       strings.recentRemove("old.md"),
       ...keys,
@@ -76,5 +78,37 @@ describe("strings (D-14)", () => {
     });
     const literal = /(textContent|title|innerText|placeholder)\s*=\s*["'`]|aria-label",\s*["'`]/;
     expect(Object.keys(code).filter((f) => literal.test(code[f]))).toEqual([]);
+  });
+
+  it("test_strings_every_locale_has_every_string", () => {
+    // Keys, nesting and which entries are functions (with the same arity) match English.
+    const shape = (node: unknown): unknown =>
+      typeof node === "function"
+        ? `fn/${node.length}`
+        : typeof node === "object" && node !== null
+          ? Object.fromEntries(Object.entries(node).map(([k, v]) => [k, shape(v)]))
+          : typeof node;
+    for (const [code, locale] of Object.entries(LOCALES)) {
+      expect(shape(locale), code).toEqual(shape(en));
+      expect(locale.appName, code).toBe("Nacho Viewer");
+    }
+    // Every language but English is translated: most strings differ from English.
+    const english = new Set(stringValues(en));
+    for (const [code, locale] of Object.entries(LOCALES)) {
+      if (code === "en") continue;
+      const same = stringValues(locale).filter((v) => english.has(v));
+      expect(same.length, code).toBeLessThan(stringValues(en).length / 5);
+    }
+  });
+
+  it("test_strings_language_follows_setting_then_system_then_english", () => {
+    expect(resolveLanguage("es", ["de-DE"])).toBe("es");
+    expect(resolveLanguage("auto", ["pt-BR", "en"])).toBe("pt");
+    expect(resolveLanguage(null, ["zh-Hans-CN"])).toBe("zh");
+    expect(resolveLanguage("auto", ["sv-SE", "fr-CA"])).toBe("fr");
+    expect(resolveLanguage("auto", ["sv-SE"])).toBe("en");
+    expect(resolveLanguage("xx", ["es"])).toBe("en");
+    expect(resolveLanguage("constructor", [])).toBe("en");
+    expect(resolveLanguage("auto", ["__proto__"])).toBe("en");
   });
 });
