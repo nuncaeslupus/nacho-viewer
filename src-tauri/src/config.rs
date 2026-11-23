@@ -108,7 +108,8 @@ fn carry_over(old: &Path, new: &Path) {
 }
 
 /// Reads the config. A missing or unreadable file gives the defaults and is left alone; a file
-/// that does not parse, or has an unknown version, is moved aside to a fresh backup first.
+/// that does not parse, or has no known version, is moved aside to a fresh backup first. A newer
+/// version (an older build run once) keeps the settings this build knows and ignores the rest.
 pub fn load(path: &Path) -> Config {
     let Ok(text) = fs::read_to_string(path) else {
         return Config::default();
@@ -133,7 +134,7 @@ fn free_backup(path: &Path) -> Option<PathBuf> {
 
 fn parse(text: &str) -> Option<Config> {
     let value: Value = serde_json::from_str(text).ok()?;
-    if value.get("version")?.as_u64()? != VERSION {
+    if value.get("version")?.as_u64()? < VERSION {
         return None;
     }
     serde_json::from_value::<Config>(value)
@@ -181,7 +182,7 @@ mod tests {
 
         assert_eq!(load(&path), Config::default());
 
-        let texts = [r#"{"version": 2, "theme": "dark"}"#, "{not json", "{}"];
+        let texts = [r#"{"version": 0, "theme": "dark"}"#, "{not json", "{}"];
         for text in texts {
             fs::write(&path, text).unwrap();
             assert_eq!(load(&path), Config::default(), "{text}");
@@ -194,6 +195,19 @@ mod tests {
         {
             assert_eq!(fs::read_to_string(dir.path().join(bak)).unwrap(), text);
         }
+    }
+
+    #[test]
+    fn test_config_from_a_newer_version_keeps_known_settings() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        let text = r#"{"version": 2, "theme": "dark", "remoteImages": true, "newThing": 3}"#;
+        fs::write(&path, text).unwrap();
+        let config = load(&path);
+        assert_eq!(config.theme, Theme::Dark);
+        assert!(config.remote_images);
+        assert_eq!(fs::read_to_string(&path).unwrap(), text);
+        assert!(!dir.path().join("config.json.bak").exists());
     }
 
     #[test]

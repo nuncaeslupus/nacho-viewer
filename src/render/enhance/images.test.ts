@@ -44,7 +44,9 @@ describe("imagePolicy", () => {
     expect(srcs).toContain("https://example.com/a.png");
     expect(srcs).toContain("https://example.com/b.png");
     expect(srcs).toContain("https://example.com/f.png");
-    expect(srcs).toContain("http://example.com/g.png");
+    expect(srcs).toContain("https://example.com/g.png");
+    expect(srcs).toContain("https://example.com/c.png");
+    expect(srcs.some((s) => s?.startsWith("http:"))).toBe(false);
     expect(srcs).toContain("https://example.com/h.png");
     expect(root.querySelector("source")?.getAttribute("srcset")).toBe("https://example.com/d.png");
   });
