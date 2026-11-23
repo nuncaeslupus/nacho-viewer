@@ -66,7 +66,9 @@ screen.
 
 **Settings** (<kbd>Ctrl</kbd>+<kbd>,</kbd>) has the theme (system, light or dark, also
 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>), the style of the page (Classic, Newspaper, Paper,
-Docs or Typewriter) and whether images from the internet load.
+Docs or Typewriter), the language of the app and this guide (the system's, or English,
+Spanish, German, French, Italian, Portuguese, Chinese, Japanese, Hindi, Bengali, Indonesian, Korean, Turkish or Vietnamese) and whether images from the
+internet load.
 
 For anything else, put your own CSS in `user.css` in the app's settings folder:
 

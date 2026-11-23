@@ -28,6 +28,8 @@ pub struct Config {
     pub wide_sheet: bool,
     /// Settings › Style: the document's faces and spacing; an unknown one reads as Classic.
     pub style: String,
+    /// Settings › Language: `auto` follows the system; the frontend knows the codes.
+    pub language: String,
     pub recent_files: Vec<String>,
 }
 
@@ -40,6 +42,7 @@ impl Default for Config {
             remote_images: false,
             wide_sheet: false,
             style: "classic".into(),
+            language: "auto".into(),
             recent_files: Vec::new(),
         }
     }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { strings } from "../strings";
+import { LANGUAGE_KEY, strings } from "../strings";
 import { matchesKey } from "./definition";
 import { fakeBackend, settle } from "./fake-backend";
 import { clearMatches, highlightMatches } from "./find";
@@ -224,6 +224,56 @@ describe("reading tools", () => {
     await settle();
     expect(state.config.style).toBe("paper");
     press({ key: "Escape" });
+  });
+
+  it("test_language_is_picked_in_settings_and_reloads_in_it", async () => {
+    const fake = fakeBackend({ "/n/a.md": "# A" });
+    const root = document.createElement("div");
+    let reloads = 0;
+    const shell = new Shell(root, fake.backend, () => reloads++);
+    shells.push(shell);
+    await shell.start();
+    await shell.openPaths(["/n/a.md"]);
+    expect(document.documentElement.lang).toBe("en");
+    press({ key: ",", ctrlKey: true });
+    const item = (code: string) =>
+      root.querySelector<HTMLElement>(`.settings-dialog [data-language=${code}]`);
+    expect(item("auto")?.getAttribute("aria-checked")).toBe("true");
+    expect(item("es")?.textContent).toBe("Español");
+
+    click(item("es"));
+    await settle();
+    await settle();
+    expect(fake.state.config.language).toBe("es");
+    expect(localStorage.getItem(LANGUAGE_KEY)).toBe("es");
+    expect(reloads).toBe(1);
+    // The window comes back with its tab and Settings open.
+    expect(JSON.parse(sessionStorage.getItem("nacho-viewer.reopen") ?? "{}")).toMatchObject({
+      paths: ["/n/a.md", "/n/a.md"],
+      settings: true,
+    });
+    sessionStorage.clear();
+    localStorage.clear();
+  });
+
+  it("test_saved_language_reloads_a_window_loaded_in_another", async () => {
+    const fake = fakeBackend({});
+    fake.state.config.language = "de";
+    let reloads = 0;
+    const shell = new Shell(document.createElement("div"), fake.backend, () => reloads++);
+    shells.push(shell);
+    await shell.start();
+    expect(reloads).toBe(1);
+    expect(localStorage.getItem(LANGUAGE_KEY)).toBe("de");
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  it("test_guide_opens_in_the_ui_language", async () => {
+    const { root, state } = await open({}, []);
+    click(root.querySelector(".menu-item[data-action=help]"));
+    await settle();
+    expect(state.guideLanguage).toBe("en");
   });
 
   it("test_find_marks_matches_and_survives_reload", async () => {

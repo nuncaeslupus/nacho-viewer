@@ -145,6 +145,7 @@ export const settings = [
   "style",
   "defaultZoom",
   "remoteImages",
+  "language",
 ] as const satisfies readonly (keyof Config)[];
 
 export function barButtons(): ActionId[] {

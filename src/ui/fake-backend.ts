@@ -19,12 +19,15 @@ export function fakeBackend(files: Record<string, string>, launch: string[] = []
       remoteImages: false,
       wideSheet: false,
       style: "classic",
+      language: "auto",
       recentFiles: [],
     } as Config,
     external: [] as string[],
     revealed: [] as string[],
     /** Where the guide lands; `null` makes `helpFile` fail. */
     guide: "/data/help/Guide.md" as string | null,
+    /** The language the guide was last asked for in. */
+    guideLanguage: "",
     userCss: null as string | null,
     dialogPaths: [] as string[],
     dialogCalls: 0,
@@ -133,7 +136,8 @@ export function fakeBackend(files: Record<string, string>, launch: string[] = []
     revealFile: async (path) => {
       state.revealed.push(path);
     },
-    helpFile: async () => {
+    helpFile: async (language) => {
+      state.guideLanguage = language;
       if (state.guide === null) throw { kind: "io", message: "no guide" };
       files[state.guide] = "# Guide";
       return state.guide;
