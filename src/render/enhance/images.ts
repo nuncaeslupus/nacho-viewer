@@ -57,7 +57,8 @@ export function imagePolicy(
     if ("remote" in target) {
       if (!remoteImages) el.setAttribute("data-remote-src", src);
       // The CSP admits only https images, so http is upgraded rather than left to break.
-      else if (WEB.test(target.remote)) el.setAttribute("src", target.remote.replace(WEB, "https:"));
+      else if (WEB.test(target.remote))
+        el.setAttribute("src", target.remote.replace(WEB, "https:"));
     } else if (SVG.test(target.local)) el.setAttribute("data-svg-path", target.local);
     else el.setAttribute("src", toImageUrl(target.local));
   };
