@@ -117,8 +117,16 @@ pub fn load(path: &Path) -> Config {
         return Config::default();
     };
     if let Some(version) = newer_version(&text) {
-        let bak = path.with_extension(format!("json.v{version}.bak"));
-        if fs::symlink_metadata(&bak).is_err() {
+        // Reuse a backup that already holds this text; otherwise take the next free name.
+        let mut names = (0..1000).map(|n| match n {
+            0 => path.with_extension(format!("json.v{version}.bak")),
+            n => path.with_extension(format!("json.v{version}.{n}.bak")),
+        });
+        let free = names.find(|p| match fs::read_to_string(p) {
+            Ok(old) => old == text,
+            Err(_) => fs::symlink_metadata(p).is_err(),
+        });
+        if let Some(bak) = free.filter(|p| !p.exists()) {
             let _ = fs::copy(path, bak);
         }
     }
@@ -246,6 +254,14 @@ mod tests {
         save(&path, &config).unwrap();
         load(&path);
         assert_eq!(fs::read_to_string(&bak).unwrap(), text);
+        // A different newer file gets its own backup; the same one is not copied again.
+        let other = r#"{"version": 2, "theme": "light"}"#;
+        fs::write(&path, other).unwrap();
+        load(&path);
+        load(&path);
+        let bak1 = dir.path().join("config.json.v2.1.bak");
+        assert_eq!(fs::read_to_string(&bak1).unwrap(), other);
+        assert!(!dir.path().join("config.json.v2.2.bak").exists());
 
         // A value this build cannot read costs only that setting.
         fs::write(
