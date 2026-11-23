@@ -155,8 +155,15 @@ mod tests {
             .unwrap()
             .set_modified(mtime)
             .unwrap();
-        let second = rx.recv_timeout(Duration::from_secs(2)).unwrap();
-        assert_eq!(second.mtime_ms, first.mtime_ms);
+        // The write and the mtime reset are two events; the debouncer may report the write (with
+        // its own, newer mtime) on its own first. What matters is that the reset is reported.
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        let second = std::iter::from_fn(|| {
+            rx.recv_timeout(deadline.saturating_duration_since(std::time::Instant::now()))
+                .ok()
+        })
+        .find(|c| c.mtime_ms == first.mtime_ms)
+        .expect("the change back to the first mtime is reported");
         assert_ne!(second.size, first.size);
     }
 
