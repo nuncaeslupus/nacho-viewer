@@ -134,10 +134,29 @@ fn free_backup(path: &Path) -> Option<PathBuf> {
 
 fn parse(text: &str) -> Option<Config> {
     let value: Value = serde_json::from_str(text).ok()?;
-    if value.get("version")?.as_u64()? < VERSION {
+    let version = value.get("version")?.as_u64()?;
+    if version < VERSION {
         return None;
     }
-    serde_json::from_value::<Config>(value)
+    if version == VERSION {
+        return serde_json::from_value::<Config>(value)
+            .ok()
+            .map(Config::normalized);
+    }
+    // Newer: take each field this build knows on its own, so one value it cannot read (a new
+    // theme, say) costs only that setting.
+    let mut merged = serde_json::to_value(Config::default()).ok()?;
+    for (key, field) in value.as_object()? {
+        if merged.get(key).is_none() {
+            continue;
+        }
+        let mut trial = merged.clone();
+        trial[key] = field.clone();
+        if serde_json::from_value::<Config>(trial.clone()).is_ok() {
+            merged = trial;
+        }
+    }
+    serde_json::from_value::<Config>(merged)
         .ok()
         .map(Config::normalized)
 }
@@ -208,6 +227,17 @@ mod tests {
         assert!(config.remote_images);
         assert_eq!(fs::read_to_string(&path).unwrap(), text);
         assert!(!dir.path().join("config.json.bak").exists());
+
+        // A value this build cannot read costs only that setting.
+        fs::write(
+            &path,
+            r#"{"version": 2, "theme": "sepia", "remoteImages": true}"#,
+        )
+        .unwrap();
+        let config = load(&path);
+        assert_eq!(config.theme, Theme::System);
+        assert!(config.remote_images);
+        assert!(path.exists());
     }
 
     #[test]

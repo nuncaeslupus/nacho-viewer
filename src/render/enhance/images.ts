@@ -46,8 +46,10 @@ export function imagePolicy(
   return (el) => {
     const srcset = el.getAttribute("srcset");
     // ponytail: a local `srcset` is dropped, not rewritten; `src` still shows the image.
-    if (srcset !== null && !(remoteImages && candidates(srcset).every(web))) {
-      el.removeAttribute("srcset");
+    if (srcset !== null) {
+      if (remoteImages && candidates(srcset).every(web)) {
+        el.setAttribute("srcset", upgradeSrcset(docPath, srcset));
+      } else el.removeAttribute("srcset");
     }
     const src = el.getAttribute("src");
     if (src === null || el.tagName !== "IMG" || DATA.test(src)) return;
@@ -62,6 +64,21 @@ export function imagePolicy(
     } else if (SVG.test(target.local)) el.setAttribute("data-svg-path", target.local);
     else el.setAttribute("src", toImageUrl(target.local));
   };
+}
+
+/** Each candidate's URL resolved and moved to https, its descriptor (`2x`, `300w`) kept. */
+function upgradeSrcset(docPath: string, srcset: string): string {
+  return srcset
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean)
+    .map((c) => {
+      const [url, ...descriptor] = c.split(/\s+/);
+      const target = classify(docPath, url);
+      const href = target && "remote" in target ? target.remote.replace(WEB, "https:") : url;
+      return [href, ...descriptor].join(" ");
+    })
+    .join(", ");
 }
 
 function candidates(srcset: string): string[] {

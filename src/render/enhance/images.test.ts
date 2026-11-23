@@ -49,6 +49,8 @@ describe("imagePolicy", () => {
     expect(srcs.some((s) => s?.startsWith("http:"))).toBe(false);
     expect(srcs).toContain("https://example.com/h.png");
     expect(root.querySelector("source")?.getAttribute("srcset")).toBe("https://example.com/d.png");
+    const http = images('<img src="http://e.com/a.png" srcset="http://e.com/a2.png 2x">', true);
+    expect(http.querySelector("img")?.getAttribute("srcset")).toBe("https://e.com/a2.png 2x");
   });
 
   it("test_local_images_use_image_protocol_and_svgs_marked", () => {
