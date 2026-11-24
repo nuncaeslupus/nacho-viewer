@@ -1,0 +1,46 @@
+name: stats
+
+# Weekly download statistics, published at <pages>/stats/ (scripts/stats.py). Snap numbers need
+# SNAPCRAFT_STORE_CREDENTIALS with the package_metrics permission; without it they are skipped.
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: gh-pages
+
+permissions:
+  contents: write
+
+jobs:
+  stats:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Snap metrics
+        continue-on-error: true
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        run: |
+          sudo snap install snapcraft --classic
+          mkdir snap-metrics
+          for m in installed_base_by_version installed_base_by_country installed_base_by_operating_system; do
+            snapcraft metrics nacho-viewer --name "$m" --format json \
+              --start "$(date -d '-3 days' +%F)" --end "$(date -d '-1 day' +%F)" >"snap-metrics/$m.json" \
+              || rm -f "snap-metrics/$m.json"
+          done
+      - run: |
+          git fetch --depth 1 origin gh-pages
+          git worktree add pages FETCH_HEAD
+          git -C pages switch -c gh-pages
+          shopt -s nullglob
+          python3 scripts/stats.py pages/stats snap-metrics/*.json
+          cd pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stats
+          git diff --cached --quiet || { git commit -m "stats: $(date +%F)" && git push origin gh-pages; }
