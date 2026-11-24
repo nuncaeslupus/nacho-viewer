@@ -45,7 +45,7 @@ def releases():
 def github_counts(data):
     """{version: {platform: downloads}} for every release, newest first."""
     table = {}
-    for rel in data:
+    for rel in sorted(data, key=lambda r: r.get("published_at") or r["created_at"], reverse=True):
         row = table.setdefault(rel["tag_name"], {p: 0 for p, _ in PLATFORMS})
         for asset in rel["assets"]:
             if p := platform(asset["name"]):
@@ -85,7 +85,10 @@ h1{font-size:24px;margin:0}h2{font-size:15px;margin:0 0 12px}.sub{color:var(--mu
 .row{display:grid;grid-template-columns:92px 1fr 36px;gap:8px;align-items:center;font-size:13px;margin:5px 0}
 .row .n{text-align:right;font-variant-numeric:tabular-nums}.bar{display:flex;height:14px;
 background:var(--track);border-radius:4px;overflow:hidden}.bar i{display:block;height:100%}
-svg text{fill:var(--muted);font-size:16px}.note{color:var(--muted);font-size:13px}
+.axis{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}.note{color:var(--muted);font-size:13px}
+details{margin-top:10px;font-size:13px}summary{cursor:pointer;color:var(--muted)}
+table{border-collapse:collapse;margin-top:8px}td,th{padding:3px 10px;text-align:right;border-bottom:1px solid var(--line)}
+td:first-child,th:first-child{text-align:left}
 footer{color:var(--muted);font-size:13px;margin-top:20px}a{color:inherit}
 """
 
@@ -120,25 +123,31 @@ def legend(names):
 
 
 def line_chart(rows, names):
-    """Cumulative downloads per platform over time, as inline SVG."""
-    pts = [(r["date"], [int(r.get(n) or 0) for n in names]) for r in rows]
+    """Cumulative downloads per platform over time: SVG lines, with HTML labels that stay readable."""
+    pts = [(datetime.date.fromisoformat(r["date"]), [int(r.get(n) or 0) for n in names]) for r in rows]
     if len(pts) < 2:
         return '<p class="note">The trend appears once there are two days of data.</p>'
-    w, h, pad = 900, 240, 40
+    w, h = 900, 220
+    span = (pts[-1][0] - pts[0][0]).days or 1
     top = max(max(v) for _, v in pts) or 1
-    x = lambda i: pad + i * (w - 2 * pad) / (len(pts) - 1)
-    y = lambda v: h - pad - v * (h - 2 * pad) / top
+
+    def x(day):
+        return (day - pts[0][0]).days * w / span
+
+    def y(v):
+        return h - 4 - v * (h - 8) / top
+
     lines = "".join(
-        f'<polyline fill="none" stroke="{COLORS[k]}" stroke-width="3" points="'
-        + " ".join(f"{x(i):.1f},{y(v[k]):.1f}" for i, (_, v) in enumerate(pts)) + '"/>'
+        f'<polyline fill="none" stroke="{COLORS[k]}" stroke-width="3" vector-effect="non-scaling-stroke" '
+        'points="' + " ".join(f"{x(d):.1f},{y(v[k]):.1f}" for d, v in pts) + '"/>'
         for k in range(len(names))
     )
-    axis = (
-        f'<text x="{pad}" y="{h - 8}">{esc(pts[0][0])}</text>'
-        f'<text x="{w - pad}" y="{h - 8}" text-anchor="end">{esc(pts[-1][0])}</text>'
-        f'<text x="4" y="{pad}">{top}</text><text x="4" y="{h - pad}">0</text>'
+    return (
+        f'<div class="axis"><span>{top}</span></div>'
+        f'<svg viewBox="0 0 {w} {h}" preserveAspectRatio="none" width="100%" height="180" role="img" '
+        f'aria-label="Downloads per platform from {pts[0][0]} to {pts[-1][0]}">{lines}</svg>'
+        f'<div class="axis"><span>{pts[0][0]}</span><span>{pts[-1][0]}</span></div>'
     )
-    return f'<svg viewBox="0 0 {w} {h}" width="100%" role="img" aria-label="Downloads over time">{axis}{lines}</svg>'
 
 
 def render(today, counts, totals, snap, snap_total, rows, fields):
@@ -153,7 +162,14 @@ def render(today, counts, totals, snap, snap_total, rows, fields):
     ]
     cards = [
         '<div class="card wide"><h2>Downloads per release</h2>' + legend(names)
-        + bars([(v, [r[p] for p in names]) for v, r in counts.items()], stacked=COLORS) + "</div>",
+        + bars([(v, [r[p] for p in names]) for v, r in counts.items()], stacked=COLORS)
+        + "<details><summary>Numbers</summary><table><tr><th>Release</th>"
+        + "".join(f"<th>{esc(p)}</th>" for p in names) + "</tr>"
+        + "".join(
+            f"<tr><td>{esc(v)}</td>" + "".join(f"<td>{r[p]}</td>" for p in names) + "</tr>"
+            for v, r in counts.items()
+        )
+        + "</table></details></div>",
         '<div class="card wide"><h2>Total over time</h2>' + legend(names) + line_chart(rows, names) + "</div>",
         '<div class="card"><h2>By platform</h2>'
         + bars([(p, totals[p]) for p in names], lambda p: COLORS[names.index(p)]) + "</div>",
