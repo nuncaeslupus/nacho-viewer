@@ -286,8 +286,13 @@ button:disabled {
   background: var(--chrome-hover);
 }
 
+/* WebKitGTK clips a translucent element's glyphs to its box, and with some fonts the
+   descenders fall below a normal line box: a taller line and padding keep them inside. */
 .notice {
+  display: inline-block;
   margin-right: 8px;
+  padding: 2px 0;
+  line-height: 1.5;
   opacity: 0.8;
   white-space: nowrap;
 }
