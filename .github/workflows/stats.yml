@@ -1,10 +1,10 @@
 name: stats
 
-# Weekly download statistics, published at <pages>/stats/ (scripts/stats.py). Snap numbers need
+# Daily download statistics, published at <pages>/stats/ (scripts/stats.py). Snap numbers need
 # SNAP_METRICS_CREDENTIALS (`snapcraft export-login --acls package_metrics`); without it they are skipped.
 on:
   schedule:
-    - cron: "17 6 * * 1"
+    - cron: "17 6 * * *"
   workflow_dispatch:
 
 concurrency:

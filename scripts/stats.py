@@ -120,7 +120,7 @@ def main(out, snap_files):
         "margin:2em auto;padding:0 16px}table{border-collapse:collapse;margin:.5em 0 1.5em}"
         "td,th{border:1px solid #ccc;padding:4px 10px;text-align:right}"
         "td:first-child,th:first-child{text-align:left}</style>"
-        f"<h1>Nacho Viewer downloads</h1><p>Updated {today} (weekly).</p>" + "".join(parts)
+        f"<h1>Nacho Viewer downloads</h1><p>Updated {today} (daily).</p>" + "".join(parts)
     )
     with open(os.path.join(out, "index.html"), "w") as f:
         f.write(page)
