@@ -21,6 +21,9 @@ PLATFORMS = [
     ("Linux .deb", (".deb",)),
     ("Linux AppImage", (".AppImage",)),
 ]
+# Downloads channels.yml makes itself for each stable release: Homebrew hashes the .dmg,
+# the apt and Snap jobs each fetch the .deb. Subtracted so the page counts people.
+PIPELINE = {"macOS": 1, "Linux .deb": 2}
 
 
 def platform(name):
@@ -50,6 +53,9 @@ def github_counts(data):
         for asset in rel["assets"]:
             if p := platform(asset["name"]):
                 row[p] += asset["download_count"]
+        if not rel.get("prerelease"):
+            for p, n in PIPELINE.items():
+                row[p] = max(0, row[p] - n)
     return table
 
 
@@ -192,7 +198,8 @@ def render(today, counts, totals, snap, snap_total, rows, fields):
         '<div class="kpis">'
         + "".join(f'<div class="card kpi"><b>{esc(n)}</b><span>{esc(t)}</span></div>' for n, t in kpis)
         + '</div><div class="grid">' + "".join(cards) + "</div>"
-        "<footer>GitHub counts include Homebrew and winget, which download from GitHub Releases. "
+        "<footer>GitHub counts include Homebrew and winget, which download from GitHub Releases, "
+        "minus the 3 downloads the release pipeline makes itself (1 .dmg, 2 .deb). "
         "The apt repo has no counts, and the app sends no telemetry. "
         '<a href="history.csv">history.csv</a></footer></main></html>'
     )
