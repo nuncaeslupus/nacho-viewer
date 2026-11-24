@@ -3,6 +3,14 @@
 Notable changes per release. The full list is on
 [GitHub Releases](https://github.com/nuncaeslupus/nacho-viewer/releases).
 
+## 0.1.5 — 2026-11-24
+
+- Settings › Language is a dropdown. The outline button shows a side-panel icon.
+- Remote images over `http` (including `srcset`) load over `https` when remote images are on.
+- A settings file from a newer version keeps the settings this version knows, and is backed up
+  before this version saves over it.
+- Leftover print previews are cleared at startup.
+
 ## 0.1.4 — 2026-11-23
 
 - The interface comes in 14 languages: English, Spanish, German, French, Italian, Portuguese,
