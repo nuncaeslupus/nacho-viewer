@@ -53,7 +53,7 @@ Dosya diskte değiştiğinde sayfa kendiliğinden yeniden yüklenir ve yerinizi 
 
 ### Kendinize göre ayarlayın
 
-**Ayarlar** (<kbd>Ctrl</kbd>+<kbd>,</kbd>) temayı (sistem, açık veya koyu; ayrıca <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>), sayfa stilini (Klasik, Gazete, Kâğıt, Belge veya Daktilo), uygulamanın ve bu kılavuzun dilini (sistemin dili ya da İngilizce, İspanyolca, Almanca, Fransızca, İtalyanca, Portekizce, Çince, Japonca, Hintçe, Bengalce, Endonezce, Korece, Türkçe veya Vietnamca) ve internetteki görsellerin yüklenip yüklenmeyeceğini içerir.
+**Ayarlar** (<kbd>Ctrl</kbd>+<kbd>,</kbd>) temayı (sistem, açık veya koyu; ayrıca <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>), sayfa stilini (Klasik, Gazete, Kâğıt, Belge veya Daktilo), uygulamanın ve bu kılavuzun dilini (sistemin dili ya da İngilizce, İspanyolca, Almanca, Fransızca, İtalyanca, Portekizce, Çince, Japonca, Hintçe, Bengalce, Endonezce, Korece, Türkçe, Vietnamca veya Katalanca) ve internetteki görsellerin yüklenip yüklenmeyeceğini içerir.
 
 Başka her şey için kendi CSS'inizi uygulamanın ayarlar klasöründeki `user.css` dosyasına koyun:
 

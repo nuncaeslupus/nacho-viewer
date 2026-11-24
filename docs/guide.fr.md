@@ -67,7 +67,7 @@ visionneuse de votre système avant que vous ne validiez. Le papier utilise touj
 **Réglages** (<kbd>Ctrl</kbd>+<kbd>,</kbd>) contient le thème (système, clair ou sombre, aussi
 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>), le style de la page (Classique, Journal, Papier,
 Docs ou Machine à écrire), la langue de l'application et de ce guide (celle du système, ou
-l'anglais, l'espagnol, l'allemand, le français, l'italien, le portugais, le chinois, le japonais, l'hindi, le bengali, l'indonésien, le coréen, le turc ou le vietnamien)
+l'anglais, l'espagnol, l'allemand, le français, l'italien, le portugais, le chinois, le japonais, l'hindi, le bengali, l'indonésien, le coréen, le turc, le vietnamien ou le catalan)
 et le chargement ou non des images provenant d'internet.
 
 Pour tout le reste, mettez votre propre CSS dans `user.css` dans le dossier de réglages de l'application :

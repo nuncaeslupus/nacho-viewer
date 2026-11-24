@@ -53,7 +53,7 @@ Keduanya lebih dulu menanyakan ukuran teks, Kecil, Normal, atau Besar, dan **Pra
 
 ### Sesuaikan sendiri
 
-**Pengaturan** (<kbd>Ctrl</kbd>+<kbd>,</kbd>) berisi tema (sistem, terang, atau gelap; juga <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>), gaya halaman (Klasik, Koran, Kertas, Dokumen, atau Mesin tik), bahasa aplikasi dan panduan ini (bahasa sistem, atau Inggris, Spanyol, Jerman, Prancis, Italia, Portugis, Tionghoa, Jepang, Hindi, Bengali, Indonesia, Korea, Turki, atau Vietnam), dan apakah gambar dari internet dimuat.
+**Pengaturan** (<kbd>Ctrl</kbd>+<kbd>,</kbd>) berisi tema (sistem, terang, atau gelap; juga <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>), gaya halaman (Klasik, Koran, Kertas, Dokumen, atau Mesin tik), bahasa aplikasi dan panduan ini (bahasa sistem, atau Inggris, Spanyol, Jerman, Prancis, Italia, Portugis, Tionghoa, Jepang, Hindi, Bengali, Indonesia, Korea, Turki, Vietnam, atau Katalan), dan apakah gambar dari internet dimuat.
 
 Untuk hal lainnya, taruh CSS Anda sendiri di `user.css` di folder pengaturan aplikasi:
 

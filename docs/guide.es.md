@@ -67,7 +67,7 @@ pantalla.
 **Ajustes** (<kbd>Ctrl</kbd>+<kbd>,</kbd>) incluye el tema (sistema, claro u oscuro; también
 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>), el estilo de la página (Clásico, Periódico, Papel,
 Docs o Máquina de escribir), el idioma de la aplicación y de esta guía (el del sistema, o inglés,
-español, alemán, francés, italiano, portugués, chino, japonés, hindi, bengalí, indonesio, coreano, turco o vietnamita) y si se cargan las imágenes de
+español, alemán, francés, italiano, portugués, chino, japonés, hindi, bengalí, indonesio, coreano, turco, vietnamita o catalán) y si se cargan las imágenes de
 internet.
 
 Para cualquier otra cosa, pon tu propio CSS en `user.css` en la carpeta de ajustes de la aplicación:

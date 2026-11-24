@@ -1,5 +1,6 @@
 // Every UI string lives in a locale file (D-14), so translations are added without touching the code.
 import { bn } from "./locales/bn";
+import { ca } from "./locales/ca";
 import { de } from "./locales/de";
 import { en, type Locale } from "./locales/en";
 import { es } from "./locales/es";
@@ -30,6 +31,7 @@ export const LANGUAGES = {
   ko: "한국어",
   tr: "Türkçe",
   vi: "Tiếng Việt",
+  ca: "Català",
 } as const;
 export type Language = keyof typeof LANGUAGES;
 
@@ -48,6 +50,7 @@ export const LOCALES: Record<Language, Locale> = {
   ko,
   tr,
   vi,
+  ca,
 };
 
 /** Where the window keeps the language setting: strings are picked before the config is read. */

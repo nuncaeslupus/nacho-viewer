@@ -53,7 +53,7 @@ Cả hai đều hỏi cỡ chữ trước: Nhỏ, Vừa hoặc Lớn, và **Xem 
 
 ### Tùy chỉnh theo ý bạn
 
-**Cài đặt** (<kbd>Ctrl</kbd>+<kbd>,</kbd>) có giao diện (hệ thống, sáng hoặc tối; cũng đổi được bằng <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>), kiểu trang (Cổ điển, Báo chí, Giấy, Tài liệu hoặc Máy chữ), ngôn ngữ của ứng dụng và hướng dẫn này (ngôn ngữ hệ thống, hoặc tiếng Anh, Tây Ban Nha, Đức, Pháp, Ý, Bồ Đào Nha, Trung, Nhật, Hindi, Bengal, Indonesia, Hàn, Thổ Nhĩ Kỳ hoặc Việt) và việc có tải hình ảnh từ internet hay không.
+**Cài đặt** (<kbd>Ctrl</kbd>+<kbd>,</kbd>) có giao diện (hệ thống, sáng hoặc tối; cũng đổi được bằng <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>), kiểu trang (Cổ điển, Báo chí, Giấy, Tài liệu hoặc Máy chữ), ngôn ngữ của ứng dụng và hướng dẫn này (ngôn ngữ hệ thống, hoặc tiếng Anh, Tây Ban Nha, Đức, Pháp, Ý, Bồ Đào Nha, Trung, Nhật, Hindi, Bengal, Indonesia, Hàn, Thổ Nhĩ Kỳ, Việt hoặc Catalan) và việc có tải hình ảnh từ internet hay không.
 
 Với mọi thứ khác, hãy đặt CSS của riêng bạn vào `user.css` trong thư mục cài đặt của ứng dụng:
 

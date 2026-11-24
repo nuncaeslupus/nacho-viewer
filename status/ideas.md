@@ -14,7 +14,7 @@
 - Print / export to PDF  (I-9)
 - A signature theme: book-like serif body, sans headings, bundled fonts, light + dark, optional user CSS file  (I-21)
 - Later: a theme picker — choose once, remembered  (I-22)
-- UI translations: English, Spanish, German, French, Italian, Portuguese, Chinese, Japanese, Hindi, Bengali, Indonesian, Korean, Turkish, Vietnamese; picked in Settings, guide translated too  (I-23)
+- UI translations: English, Spanish, German, French, Italian, Portuguese, Chinese, Japanese, Hindi, Bengali, Indonesian, Korean, Turkish, Vietnamese, Catalan; picked in Settings, guide translated too  (I-23)
 - Recent files, menus and a simple toolbar  (I-10)
 - Tabs: several documents per window; links to `.md` open in the current tab, Ctrl/middle-click opens a new one; back/forward per tab  (I-18)
 - Open by file association, drag-and-drop and `glossmark <file>` from a terminal  (I-19)
