@@ -11,6 +11,7 @@ mod help;
 mod image;
 #[cfg(target_os = "linux")]
 mod pdf_links;
+mod reveal;
 mod scope;
 mod updater;
 mod watch;

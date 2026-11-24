@@ -476,10 +476,10 @@ pub async fn reveal_file(
 ) -> Result<(), IpcError> {
     let path = lock(&state.scope).check_document(Path::new(&path))?;
     let io = |e: String| IpcError::new(ErrorKind::Io, e);
-    tauri::async_runtime::spawn_blocking(move || app.opener().reveal_item_in_dir(path))
+    tauri::async_runtime::spawn_blocking(move || crate::reveal::reveal(&app, &path))
         .await
         .map_err(|e| io(e.to_string()))?
-        .map_err(|e| io(e.to_string()))
+        .map_err(io)
 }
 
 #[cfg(test)]
