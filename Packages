@@ -1,21 +1,5 @@
 Package: nacho-viewer
 Architecture: amd64
-Version: 0.1.0
-Priority: optional
-Maintainer: github
-Installed-Size: 27712
-Depends: libwebkit2gtk-4.1-0, libgtk-3-0
-Filename: pool/nacho-viewer_0.1.0_amd64.deb
-Size: 11855946
-MD5sum: 62292bfa475b7732e1f2393ce2380cae
-SHA1: 90ef2c8950b34aca98a9f4d3e5fdf6e44245e3e1
-SHA256: 0308119bbf54a7fac2ac573316895ac3fdf9b3ec29c75d2adb2ca38e294fb2a4
-SHA512: 739d371b7a97babc2557a1bc7c98a4e863402a03970967655079faf6f8fa6e011c8a6e9fcd9ebcd204ae6493031fa8f9fcd27bf35e321d884e6201c4a84a2137
-Description: A Markdown viewer that reads like a well-typeset document
- (none)
-
-Package: nacho-viewer
-Architecture: amd64
 Version: 0.1.1
 Priority: optional
 Maintainer: nuncaeslupus
@@ -75,6 +59,22 @@ MD5sum: a5ae594008df6ed036b0996c1e28c844
 SHA1: 55dff34304be2a836bfea28be5b2e130c3fae059
 SHA256: b305d8d5e83bb8a164c1fab878ff8619135bba244c0f761d86b9431f88647e32
 SHA512: cda2b3b2f5adbff436232b384e4f5ecbbfc803084bff3c257d08eb7810657700d999f4829402868b74dff44b8f1f69c3e9224d73f3c7a3f1fab7cbd8683bc151
+Description: A Markdown viewer that reads like a well-typeset document
+ (none)
+
+Package: nacho-viewer
+Architecture: amd64
+Version: 0.1.5
+Priority: optional
+Maintainer: nuncaeslupus
+Installed-Size: 28016
+Depends: libwebkit2gtk-4.1-0, libgtk-3-0
+Filename: pool/nacho-viewer_0.1.5_amd64.deb
+Size: 11972482
+MD5sum: a32ae346a1b12df7ccad9d7d4faac050
+SHA1: 826c58b804fa530f61745b287b78e867edc878b9
+SHA256: d10bdfb48b1c334217faa14a712541a8bfd99dcc9b12faf4e593b0312a61bbf3
+SHA512: 04402c7b138cff0945291bfcce4552a20bf1ec397aeec8e73a88ea1854612aa457013a2b705889d73c9f77dc6d1d4276ab69bd8305772bc303f34a14809a230b
 Description: A Markdown viewer that reads like a well-typeset document
  (none)
 
