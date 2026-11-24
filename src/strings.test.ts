@@ -101,6 +101,13 @@ describe("strings (D-14)", () => {
     }
   });
 
+  it("test_strings_languages_listed_latin_alphabetically_first", () => {
+    const names = Object.values(LANGUAGES);
+    const latin = names.filter((n) => /^\p{Script=Latin}/u.test(n));
+    expect(names.slice(0, latin.length)).toEqual(latin);
+    expect(latin).toEqual([...latin].sort((a, b) => a.localeCompare(b)));
+  });
+
   it("test_strings_language_follows_setting_then_system_then_english", () => {
     expect(resolveLanguage("es", ["de-DE"])).toBe("es");
     expect(resolveLanguage("auto", ["pt-BR", "en"])).toBe("pt");

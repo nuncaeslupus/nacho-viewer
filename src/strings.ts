@@ -15,23 +15,24 @@ import { tr } from "./locales/tr";
 import { vi } from "./locales/vi";
 import { zh } from "./locales/zh";
 
-/** The UI languages, each named in itself: Settings › Language lists them so. */
+/** The UI languages, each named in itself, in the order Settings › Language lists them (after
+ * "System language"): Latin-script names alphabetically, then the others. */
 export const LANGUAGES = {
+  id: "Bahasa Indonesia",
+  ca: "Català",
+  de: "Deutsch",
   en: "English",
   es: "Español",
-  de: "Deutsch",
   fr: "Français",
   it: "Italiano",
   pt: "Português",
-  zh: "中文",
-  ja: "日本語",
+  vi: "Tiếng Việt",
+  tr: "Türkçe",
   hi: "हिन्दी",
   bn: "বাংলা",
-  id: "Bahasa Indonesia",
+  zh: "中文",
+  ja: "日本語",
   ko: "한국어",
-  tr: "Türkçe",
-  vi: "Tiếng Việt",
-  ca: "Català",
 } as const;
 export type Language = keyof typeof LANGUAGES;
 
