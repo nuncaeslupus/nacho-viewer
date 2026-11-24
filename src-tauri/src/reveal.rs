@@ -25,14 +25,32 @@ pub fn reveal<R: Runtime>(app: &AppHandle<R>, path: &Path) -> Result<(), String>
 }
 
 /// xdg-desktop-portal's OpenURI.OpenDirectory: opens the folder holding the file the descriptor
-/// names, with that file selected where the file manager supports it.
+/// names, with that file selected where the file manager supports it. The call only queues a
+/// request, so this waits for its Response (a portal drops a request whose sender disconnects),
+/// and a refusal is an error the caller can fall back from.
 #[cfg(target_os = "linux")]
 fn portal_open_directory(path: &Path) -> Result<(), String> {
     use std::collections::HashMap;
-    use zbus::zvariant::{Fd, Value};
+    use zbus::blocking::{Connection, MessageIterator};
+    use zbus::zvariant::{Fd, OwnedValue, Value};
+    let err = |e: zbus::Error| e.to_string();
     let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
-    let options: HashMap<&str, Value> = HashMap::new();
-    let connection = zbus::blocking::Connection::session().map_err(|e| e.to_string())?;
+    let connection = Connection::session().map_err(err)?;
+    let sender = connection.unique_name().ok_or("no D-Bus name")?.as_str();
+    let token = format!("nacho{}", std::process::id());
+    let request = format!(
+        "/org/freedesktop/portal/desktop/request/{}/{token}",
+        sender.trim_start_matches(':').replace('.', "_")
+    );
+    let rule = zbus::MatchRule::builder()
+        .msg_type(zbus::message::Type::Signal)
+        .interface("org.freedesktop.portal.Request")
+        .and_then(|b| b.member("Response"))
+        .and_then(|b| b.path(request))
+        .map_err(err)?
+        .build();
+    let mut responses = MessageIterator::for_match_rule(rule, &connection, Some(1)).map_err(err)?;
+    let options = HashMap::from([("handle_token", Value::from(token.as_str()))]);
     connection
         .call_method(
             Some("org.freedesktop.portal.Desktop"),
@@ -41,6 +59,12 @@ fn portal_open_directory(path: &Path) -> Result<(), String> {
             "OpenDirectory",
             &("", Fd::from(&file), options),
         )
-        .map(drop)
-        .map_err(|e| e.to_string())
+        .map_err(err)?;
+    let message = responses.next().ok_or("no portal response")?.map_err(err)?;
+    let (code, _): (u32, HashMap<String, OwnedValue>) =
+        message.body().deserialize().map_err(err)?;
+    match code {
+        0 => Ok(()),
+        code => Err(format!("portal response {code}")),
+    }
 }
