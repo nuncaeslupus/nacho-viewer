@@ -80,7 +80,8 @@ export const language = resolveLanguage(storedSetting(), globalThis.navigator?.l
 // Glyphs on the bar buttons; their labels above are the tooltips. One starting with "M" is
 // SVG path data on Material Symbols' 960 grid (D-21).
 export const icons = {
-  outline: "☰",
+  // A window with a side panel on the left, like other apps' sidebar toggle.
+  outline: "M120-800H840V-160H120ZM180-740V-220H330V-740H180ZM390-740V-220H780V-740H390Z",
   back: "←",
   forward: "→",
   zoomOut: "−",
