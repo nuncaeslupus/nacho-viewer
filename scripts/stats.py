@@ -28,11 +28,18 @@ def platform(name):
 
 
 def releases():
-    req = urllib.request.Request(f"https://api.github.com/repos/{REPO}/releases?per_page=100")
-    if token := os.environ.get("GH_TOKEN"):
-        req.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(req) as r:
-        return json.load(r)
+    out, page = [], 1
+    while True:
+        url = f"https://api.github.com/repos/{REPO}/releases?per_page=100&page={page}"
+        req = urllib.request.Request(url)
+        if token := os.environ.get("GH_TOKEN"):
+            req.add_header("Authorization", f"Bearer {token}")
+        with urllib.request.urlopen(req) as r:
+            batch = json.load(r)
+        out += batch
+        if len(batch) < 100:
+            return out
+        page += 1
 
 
 def github_counts(data):
@@ -75,7 +82,8 @@ def main(out, snap_files):
     counts = github_counts(releases())
     totals = {p: sum(r[p] for r in counts.values()) for p, _ in PLATFORMS}
     snap = snap_series(snap_files)
-    snap_total = sum(snap.get("installed_base_by_version", {}).values())
+    versions = snap.get("installed_base_by_version")
+    snap_total = sum(versions.values()) if versions is not None else None
 
     history = os.path.join(out, "history.csv")
     fields = ["date", *totals, "Snap devices"]
@@ -83,7 +91,7 @@ def main(out, snap_files):
     if os.path.exists(history):
         with open(history) as f:
             rows = [r for r in csv.DictReader(f) if r["date"] != today]
-    rows.append({"date": today, **totals, "Snap devices": snap_total if snap else ""})
+    rows.append({"date": today, **totals, "Snap devices": "" if snap_total is None else snap_total})
     with open(history, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
@@ -92,7 +100,7 @@ def main(out, snap_files):
     names = [p for p, _ in PLATFORMS]
     parts = [
         "<h2>Totals</h2>",
-        table(["Source", "Count"], [*totals.items(), ("Snap devices (now)", snap_total if snap else "n/a")]),
+        table(["Source", "Count"], [*totals.items(), ("Snap devices (now)", "n/a" if snap_total is None else snap_total)]),
         "<h2>GitHub downloads per release</h2>",
         "<p>Includes Homebrew and winget installs, which download from GitHub Releases.</p>",
         table(["Release", *names], [(v, *(r[p] for p in names)) for v, r in counts.items()]),

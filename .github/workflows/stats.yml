@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: gh-pages-stats
+  group: gh-pages
 
 permissions:
   contents: write
