@@ -67,7 +67,7 @@ auf dem Bildschirm aktiv ist.
 **Einstellungen** (<kbd>Ctrl</kbd>+<kbd>,</kbd>) bieten das Design (System, Hell oder Dunkel, auch mit
 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>), den Stil der Seite (Klassisch, Zeitung, Papier,
 Docs oder Schreibmaschine), die Sprache der App und dieses Handbuchs (die des Systems oder
-Englisch, Spanisch, Deutsch, Französisch, Italienisch, Portugiesisch, Chinesisch, Japanisch, Hindi, Bengalisch, Indonesisch, Koreanisch, Türkisch oder Vietnamesisch)
+Englisch, Spanisch, Deutsch, Französisch, Italienisch, Portugiesisch, Chinesisch, Japanisch, Hindi, Bengalisch, Indonesisch, Koreanisch, Türkisch, Vietnamesisch oder Katalanisch)
 und ob Bilder aus dem Internet geladen werden.
 
 Für alles Weitere legst du dein eigenes CSS in `user.css` im Einstellungsordner der App ab:

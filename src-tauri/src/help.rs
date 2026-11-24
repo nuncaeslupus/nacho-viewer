@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 const GUIDE: &str = "Nacho Viewer Guide.md";
 
 /// The guide in each UI language; English first, for any other code.
-const GUIDES: [(&str, &[u8]); 14] = [
+const GUIDES: [(&str, &[u8]); 15] = [
     ("en", include_bytes!("../../docs/guide.md")),
     ("es", include_bytes!("../../docs/guide.es.md")),
     ("de", include_bytes!("../../docs/guide.de.md")),
@@ -23,6 +23,7 @@ const GUIDES: [(&str, &[u8]); 14] = [
     ("ko", include_bytes!("../../docs/guide.ko.md")),
     ("tr", include_bytes!("../../docs/guide.tr.md")),
     ("vi", include_bytes!("../../docs/guide.vi.md")),
+    ("ca", include_bytes!("../../docs/guide.ca.md")),
 ];
 
 /// The pictures the guides link to, by their paths relative to the guide.

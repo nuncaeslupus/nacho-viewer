@@ -67,7 +67,7 @@ sullo schermo.
 **Impostazioni** (<kbd>Ctrl</kbd>+<kbd>,</kbd>) contiene il tema (sistema, chiaro o scuro, anche
 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>), lo stile della pagina (Classico, Giornale, Carta,
 Docs o Macchina da scrivere), la lingua dell'app e di questa guida (quella del sistema, oppure
-inglese, spagnolo, tedesco, francese, italiano, portoghese, cinese, giapponese, hindi, bengalese, indonesiano, coreano, turco o vietnamita) e se caricare le
+inglese, spagnolo, tedesco, francese, italiano, portoghese, cinese, giapponese, hindi, bengalese, indonesiano, coreano, turco, vietnamita o catalano) e se caricare le
 immagini da internet.
 
 Per tutto il resto, metti il tuo CSS in `user.css` nella cartella delle impostazioni dell'app:

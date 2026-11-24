@@ -67,7 +67,7 @@ no ecrã.
 As **Definições** (<kbd>Ctrl</kbd>+<kbd>,</kbd>) incluem o tema (sistema, claro ou escuro, também
 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>), o estilo da página (Clássico, Jornal, Papel,
 Docs ou Máquina de escrever), o idioma da aplicação e deste guia (o do sistema, ou inglês,
-espanhol, alemão, francês, italiano, português, chinês, japonês, hindi, bengali, indonésio, coreano, turco ou vietnamita) e se as imagens da internet
+espanhol, alemão, francês, italiano, português, chinês, japonês, hindi, bengali, indonésio, coreano, turco, vietnamita ou catalão) e se as imagens da internet
 são carregadas.
 
 Para tudo o resto, coloque o seu próprio CSS em `user.css` na pasta de definições da aplicação:
