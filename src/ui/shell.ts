@@ -194,7 +194,7 @@ export class Shell {
   private styleItems: HTMLElement[] = [];
   /** Settings › Language: `auto` or a code. The strings were picked from it at load. */
   private language = "auto";
-  private languageItems: HTMLElement[] = [];
+  private languageSelect?: HTMLSelectElement;
   private zoom = 100;
   private noticeTimer: ReturnType<typeof setTimeout> | undefined;
   private dialogOpen = false;
@@ -605,20 +605,17 @@ export class Shell {
     arrowKeys(themes, this.themeItems);
     arrowKeys(styles, this.styleItems);
 
-    const languages = h("div", "settings-group");
-    languages.setAttribute("role", "radiogroup");
+    const languages = h("select", "settings-select");
     languages.setAttribute("aria-label", s.language);
     const choices: [string, string][] = [["auto", s.languageSystem], ...Object.entries(LANGUAGES)];
-    this.languageItems = choices.map(([code, name]) => {
-      const item = h("button", "menu-item", name);
-      item.setAttribute("role", "radio");
-      item.dataset.language = code;
-      if (code !== "auto") item.lang = code;
-      item.addEventListener("click", () => void this.setLanguage(code));
-      return item;
-    });
-    languages.append(...this.languageItems);
-    arrowKeys(languages, this.languageItems);
+    for (const [code, name] of choices) {
+      const option = h("option", "", name);
+      option.value = code;
+      if (code !== "auto") option.lang = code;
+      languages.append(option);
+    }
+    languages.addEventListener("change", () => void this.setLanguage(languages.value));
+    this.languageSelect = languages;
 
     const remote = h("button", "menu-item", strings.actions.remoteImages);
     remote.setAttribute("role", "checkbox");
@@ -1683,10 +1680,7 @@ export class Shell {
       item.setAttribute("aria-checked", String(item.dataset.style === this.style));
       item.tabIndex = item.dataset.style === this.style ? 0 : -1;
     }
-    for (const item of this.languageItems) {
-      item.setAttribute("aria-checked", String(item.dataset.language === this.language));
-      item.tabIndex = item.dataset.language === this.language ? 0 : -1;
-    }
+    if (this.languageSelect) this.languageSelect.value = this.language;
     this.remoteItem?.setAttribute("aria-checked", String(this.config?.remoteImages ?? false));
     this.sourceItem?.setAttribute("aria-checked", String(this.active?.source.hidden === false));
   }

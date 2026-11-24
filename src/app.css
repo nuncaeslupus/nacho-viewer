@@ -616,6 +616,16 @@ mark.find-match.current {
   border-radius: 6px;
 }
 
+.settings-select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--menu-hover);
+  border-radius: 6px;
+  background: var(--menu);
+  color: var(--menu-ink);
+  font: inherit;
+}
+
 /* Settings applies each choice at once: a corner panel over the page, which stays visible. */
 .print-overlay:has(.settings-dialog) {
   align-items: flex-start;

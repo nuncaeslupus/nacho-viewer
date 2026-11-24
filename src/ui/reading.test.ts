@@ -24,6 +24,10 @@ async function open(files: Record<string, string>, launch: string[]) {
 const press = (init: KeyboardEventInit) =>
   document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, ...init }));
 const click = (el: Element | null) => (el as HTMLElement | null)?.click();
+const pick = (select: HTMLSelectElement, value: string) => {
+  select.value = value;
+  select.dispatchEvent(new Event("change"));
+};
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /** Gives an element the layout jsdom does not compute. */
 const layout = (el: Element, props: Record<string, number>) => {
@@ -236,12 +240,11 @@ describe("reading tools", () => {
     await shell.openPaths(["/n/a.md"]);
     expect(document.documentElement.lang).toBe("en");
     press({ key: ",", ctrlKey: true });
-    const item = (code: string) =>
-      root.querySelector<HTMLElement>(`.settings-dialog [data-language=${code}]`);
-    expect(item("auto")?.getAttribute("aria-checked")).toBe("true");
-    expect(item("es")?.textContent).toBe("Español");
+    const select = root.querySelector(".settings-dialog select") as HTMLSelectElement;
+    expect(select.value).toBe("auto");
+    expect(select.querySelector("option[value=es]")?.textContent).toBe("Español");
 
-    click(item("es"));
+    pick(select, "es");
     await settle();
     await settle();
     expect(fake.state.config.language).toBe("es");
@@ -265,14 +268,13 @@ describe("reading tools", () => {
     await shell.start();
     fake.state.fail.setConfig = new Error("read-only");
     press({ key: ",", ctrlKey: true });
-    click(root.querySelector(".settings-dialog [data-language=es]"));
+    const select = root.querySelector(".settings-dialog select") as HTMLSelectElement;
+    pick(select, "es");
     await settle();
     await settle();
     expect(reloads).toBe(0);
     expect(root.querySelector(".notice")?.textContent).toBe(strings.notices.settingNotSaved);
-    expect(
-      root.querySelector(".settings-dialog [data-language=auto]")?.getAttribute("aria-checked"),
-    ).toBe("true");
+    expect(select.value).toBe("auto");
     expect(localStorage.getItem(LANGUAGE_KEY)).toBe("auto");
     localStorage.clear();
   });
