@@ -3,6 +3,10 @@
 Notable changes per release. The full list is on
 [GitHub Releases](https://github.com/nuncaeslupus/nacho-viewer/releases).
 
+## 0.1.7 — 2026-11-24
+
+- Settings › Language lists System first, then Latin-script languages A–Z, then the rest.
+
 ## 0.1.6 — 2026-11-24
 
 - The interface and the user guide come in Catalan.
