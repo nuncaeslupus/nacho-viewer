@@ -153,7 +153,26 @@ background:var(--track);border-radius:4px;overflow:hidden}.bar i{display:block;h
 details{margin-top:10px;font-size:13px}summary{cursor:pointer;color:var(--muted)}
 table{border-collapse:collapse;margin-top:8px}td,th{padding:3px 10px;text-align:right;border-bottom:1px solid var(--line)}
 td:first-child,th:first-child{text-align:left}
+.band{fill:var(--ink);opacity:0}.band:hover{opacity:.08}
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);padding:4px 8px;
+border-radius:6px;font-size:13px;white-space:nowrap;display:none;z-index:9}
 footer{color:var(--muted);font-size:13px;margin-top:20px}a{color:inherit}
+"""
+
+
+# Shows an element's data-tip next to the pointer (mouse hover or touch).
+TIP_JS = """
+const tip = document.getElementById("tip");
+document.addEventListener("pointermove", e => {
+  const t = e.target.closest("[data-tip]");
+  if (!t) { tip.style.display = "none"; return; }
+  tip.textContent = t.dataset.tip;
+  tip.style.display = "block";
+  const r = tip.getBoundingClientRect();
+  tip.style.left = Math.max(4, Math.min(e.clientX + 12, innerWidth - r.width - 4)) + "px";
+  tip.style.top = Math.max(4, e.clientY - r.height - 10) + "px";
+});
+document.addEventListener("pointerleave", () => { tip.style.display = "none"; });
 """
 
 
@@ -161,15 +180,16 @@ def esc(x):
     return html.escape(str(x))
 
 
-def bars(items, color=None, stacked=None):
-    """Horizontal bars. items: [(label, value)] or, with stacked colours, [(label, [values])]."""
+def bars(items, color=None, stacked=None, names=None):
+    """Horizontal bars. items: [(label, value)] or, with stacked colours, [(label, [values])]
+    named by `names` in the hover tip."""
     top = max((sum(v) if stacked else v for _, v in items), default=0) or 1
     out = []
     for label, v in items:
         parts = v if stacked else [v]
         segs = "".join(
             f'<i style="width:{100 * x / top:.2f}%;background:{(stacked or [color(label)])[k]}" '
-            f'title="{esc(x)}"></i>'
+            f'data-tip="{esc(label)} · {esc(names[k]) + ": " if names else ""}{esc(x)}"></i>'
             for k, x in enumerate(parts)
             if x
         )
@@ -201,6 +221,14 @@ def line_chart(rows, names, what="Downloads per platform"):
     def y(v):
         return h - 4 - v * (h - 8) / top
 
+    # One hover band per day, centred on it, whose tip lists every series.
+    days = [x(d) for d, _ in pts]
+    edges = [0, *((a + b) / 2 for a, b in zip(days, days[1:])), w]
+    bands = "".join(
+        f'<rect class="band" x="{edges[i]:.1f}" y="0" width="{edges[i + 1] - edges[i]:.1f}" height="{h}" '
+        f'data-tip="{d} · ' + esc(", ".join(f"{n} {v[k]}" for k, n in enumerate(names))) + '"/>'
+        for i, (d, v) in enumerate(pts)
+    )
     lines = "".join(
         f'<polyline fill="none" stroke="{COLORS[k]}" stroke-width="3" vector-effect="non-scaling-stroke" '
         'points="' + " ".join(f"{x(d):.1f},{y(v[k]):.1f}" for d, v in pts) + '"/>'
@@ -209,7 +237,7 @@ def line_chart(rows, names, what="Downloads per platform"):
     return (
         f'<div class="axis"><span>{top}</span></div>'
         f'<svg viewBox="0 0 {w} {h}" preserveAspectRatio="none" width="100%" height="180" role="img" '
-        f'aria-label="{esc(what)} from {pts[0][0]} to {pts[-1][0]}">{lines}</svg>'
+        f'aria-label="{esc(what)} from {pts[0][0]} to {pts[-1][0]}">{lines}{bands}</svg>'
         f'<div class="axis"><span>{pts[0][0]}</span><span>{pts[-1][0]}</span></div>'
     )
 
@@ -226,7 +254,7 @@ def render(today, counts, totals, snap, snap_total, rows, fields, visits=None):
     ]
     cards = [
         '<div class="card wide"><h2>Downloads per release</h2>' + legend(names)
-        + bars([(v, [r[p] for p in names]) for v, r in counts.items()], stacked=COLORS)
+        + bars([(v, [r[p] for p in names]) for v, r in counts.items()], stacked=COLORS, names=names)
         + "<details><summary>Numbers</summary><table><tr><th>Release</th>"
         + "".join(f"<th>{esc(p)}</th>" for p in names) + "</tr>"
         + "".join(
@@ -273,7 +301,7 @@ def render(today, counts, totals, snap, snap_total, rows, fields, visits=None):
         "Referrers and pages count unique visitors. Clones include CI checkouts and bots. "
         "The apt repo has no counts, and the app sends no telemetry. "
         '<a href="history.csv">history.csv</a> · <a href="traffic.csv">traffic.csv</a> · '
-        '<a href="referrers.csv">referrers.csv</a></footer></main></html>'
+        f'<a href="referrers.csv">referrers.csv</a></footer></main><div id="tip"></div><script>{TIP_JS}</script></html>'
     )
 
 
