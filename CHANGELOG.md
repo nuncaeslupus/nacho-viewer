@@ -3,6 +3,11 @@
 Notable changes per release. The full list is on
 [GitHub Releases](https://github.com/nuncaeslupus/nacho-viewer/releases).
 
+## Unreleased
+
+- Zoom in shows as Ctrl++ and answers to Ctrl++, Ctrl+= and the keypad +.
+- Ctrl+digit and Ctrl+letter shortcuts also work on AZERTY and non-Latin keyboard layouts.
+
 ## 0.1.8 — 2026-11-25
 
 - Show in File Manager works in the Snap and Flatpak builds.

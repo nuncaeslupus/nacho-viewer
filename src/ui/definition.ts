@@ -62,7 +62,7 @@ export const actions: Record<ActionId, Action> = {
     needsDocument: true,
   },
   zoomOut: { id: "zoomOut", label: a.zoomOut, icon: i.zoomOut, key: "Ctrl+-", needsDocument: true },
-  zoomIn: { id: "zoomIn", label: a.zoomIn, icon: i.zoomIn, key: "Ctrl+=", needsDocument: true },
+  zoomIn: { id: "zoomIn", label: a.zoomIn, icon: i.zoomIn, key: "Ctrl++", needsDocument: true },
   zoomReset: { id: "zoomReset", label: a.zoomReset, key: "Ctrl+0", needsDocument: true },
   wideSheet: {
     id: "wideSheet",
@@ -152,16 +152,24 @@ export function barButtons(): ActionId[] {
   return bar.flat().flatMap((item) => (item.kind === "button" ? [item.action] : []));
 }
 
+/** Layouts that put no digit or Latin letter on a key (AZERTY's shifted digits, Cyrillic,
+ * Greek) still reach `Ctrl+0` or `Ctrl+B` through the key's position. */
+function physical(main: string, e: KeyboardEvent): boolean {
+  if (/^[0-9]$/.test(main)) return e.code === `Digit${main}` || e.code === `Numpad${main}`;
+  return /^[a-z]$/i.test(main) && !/^[a-z]$/i.test(e.key) && e.code === `Key${main.toUpperCase()}`;
+}
+
 /** Whether a keydown matches an action's `key`, e.g. `Ctrl+O`. */
 export function matchesKey(key: string, e: KeyboardEvent): boolean {
-  // ponytail: no key is `+` itself; `Ctrl` means Cmd on macOS.
-  const parts = key.split("+");
+  // `Ctrl` means Cmd on macOS. A trailing `+` is the plus key itself (`Ctrl++`).
+  const parts = key.endsWith("++") ? [...key.slice(0, -2).split("+"), "+"] : key.split("+");
   const main = parts.pop() ?? "";
   const ctrl = /Mac/.test(navigator.platform) ? e.metaKey : e.ctrlKey;
-  // `Ctrl+=` also answers to `Ctrl++`, typed with Shift or on the keypad.
-  const plus = main === "=" && e.key === "+";
+  // `Ctrl++` answers to `+` typed with or without Shift (layouts differ, and the keypad), and
+  // to `=`, the unshifted plus key on US layouts.
+  const plus = main === "+" && (e.key === "+" || e.key === "=");
   return (
-    (plus || e.key.toLowerCase() === main.toLowerCase()) &&
+    (plus || e.key.toLowerCase() === main.toLowerCase() || physical(main, e)) &&
     ctrl === parts.includes("Ctrl") &&
     e.altKey === parts.includes("Alt") &&
     (plus || e.shiftKey === parts.includes("Shift"))
