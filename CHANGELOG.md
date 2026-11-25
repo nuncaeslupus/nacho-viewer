@@ -3,6 +3,11 @@
 Notable changes per release. The full list is on
 [GitHub Releases](https://github.com/nuncaeslupus/nacho-viewer/releases).
 
+## 0.1.8 — 2026-11-25
+
+- Show in File Manager works in the Snap and Flatpak builds.
+- Notice text is no longer clipped.
+
 ## 0.1.7 — 2026-11-24
 
 - Settings › Language lists System first, then Latin-script languages A–Z, then the rest.
