@@ -397,8 +397,16 @@ describe("reading tools", () => {
 
   it("test_ctrl_plus_matches_zoom_in", () => {
     const key = (init: KeyboardEventInit) => new KeyboardEvent("keydown", init);
-    expect(matchesKey("Ctrl+=", key({ key: "+", ctrlKey: true, shiftKey: true }))).toBe(true);
-    expect(matchesKey("Ctrl+=", key({ key: "+" }))).toBe(false);
+    expect(matchesKey("Ctrl++", key({ key: "+", ctrlKey: true, shiftKey: true }))).toBe(true);
+    expect(matchesKey("Ctrl++", key({ key: "+", ctrlKey: true }))).toBe(true);
+    expect(matchesKey("Ctrl++", key({ key: "=", ctrlKey: true }))).toBe(true);
+    expect(matchesKey("Ctrl++", key({ key: "+" }))).toBe(false);
+    expect(matchesKey("Ctrl+-", key({ key: "-", ctrlKey: true }))).toBe(true);
     expect(matchesKey("Shift+F3", key({ key: "F3" }))).toBe(false);
+    // AZERTY's unshifted 0 key types `à`; a Cyrillic layout types `и` on B.
+    expect(matchesKey("Ctrl+0", key({ key: "à", code: "Digit0", ctrlKey: true }))).toBe(true);
+    expect(matchesKey("Ctrl+B", key({ key: "и", code: "KeyB", ctrlKey: true }))).toBe(true);
+    // A Latin letter wins over its position: AZERTY's A key is Ctrl+A, not Ctrl+Q.
+    expect(matchesKey("Ctrl+W", key({ key: "z", code: "KeyW", ctrlKey: true }))).toBe(false);
   });
 });
