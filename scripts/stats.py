@@ -74,6 +74,64 @@ def snap_series(paths):
     return out
 
 
+def api(path, token):
+    req = urllib.request.Request(f"https://api.github.com/repos/{REPO}/{path}")
+    req.add_header("Authorization", f"Bearer {token}")
+    with urllib.request.urlopen(req) as r:
+        return json.load(r)
+
+
+TRAFFIC = ["Views", "Visitors", "Clones", "Cloners"]
+
+
+def read_csv(path):
+    if not os.path.exists(path):
+        return []
+    with open(path) as f:
+        return list(csv.DictReader(f))
+
+
+def write_csv(path, fields, rows):
+    with open(path, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fields)
+        w.writeheader()
+        w.writerows(rows)
+
+
+def traffic(out, today):
+    """Repo traffic, which needs TRAFFIC_TOKEN with Administration: read. GitHub keeps only 14
+    days, so the daily numbers are merged into traffic.csv and each day's referrers are logged
+    to referrers.csv. Returns (daily rows, referrers, paths) or None."""
+    token = os.environ.get("TRAFFIC_TOKEN")
+    if not token:
+        return None
+    try:
+        views = api("traffic/views", token)["views"]
+        clones = api("traffic/clones", token)["clones"]
+        refs = api("traffic/popular/referrers", token)
+        paths = api("traffic/popular/paths", token)
+    except (OSError, ValueError, KeyError) as e:  # HTTPError is an OSError
+        print(f"traffic skipped: {e}", file=sys.stderr)
+        return None
+    days = {r["date"]: r for r in read_csv(os.path.join(out, "traffic.csv"))}
+    for key, series in (("Views", views), ("Clones", clones)):
+        uniq = "Visitors" if key == "Views" else "Cloners"
+        for d in series:
+            row = days.setdefault(d["timestamp"][:10], {"date": d["timestamp"][:10], **dict.fromkeys(TRAFFIC, 0)})
+            row[key], row[uniq] = d["count"], d["uniques"]
+    rows = [days[k] for k in sorted(days)]
+    write_csv(os.path.join(out, "traffic.csv"), ["date", *TRAFFIC], rows)
+    log = [r for r in read_csv(os.path.join(out, "referrers.csv")) if r["date"] != today]
+    log += [{"date": today, "referrer": r["referrer"], "views": r["count"], "visitors": r["uniques"]} for r in refs]
+    write_csv(os.path.join(out, "referrers.csv"), ["date", "referrer", "views", "visitors"], log)
+    prefix = f"/{REPO}"
+    return (
+        rows,
+        [(r["referrer"], r["uniques"]) for r in refs],
+        [(p["path"].removeprefix(prefix) or "/", p["uniques"]) for p in paths],
+    )
+
+
 COLORS = ["#2f6fdb", "#d9822b", "#2e9e6b", "#8a5cd1"]
 CSS = """
 :root{--bg:#f7f7f5;--card:#fff;--ink:#1d1d1f;--muted:#6b6b70;--line:#e4e4e0;--track:#eeeeea}
@@ -128,8 +186,8 @@ def legend(names):
     ) + "</div>"
 
 
-def line_chart(rows, names):
-    """Cumulative downloads per platform over time: SVG lines, with HTML labels that stay readable."""
+def line_chart(rows, names, what="Downloads per platform"):
+    """Values per series over time: SVG lines, with HTML labels that stay readable."""
     pts = [(datetime.date.fromisoformat(r["date"]), [int(r.get(n) or 0) for n in names]) for r in rows]
     if len(pts) < 2:
         return '<p class="note">The trend appears once there are two days of data.</p>'
@@ -151,12 +209,12 @@ def line_chart(rows, names):
     return (
         f'<div class="axis"><span>{top}</span></div>'
         f'<svg viewBox="0 0 {w} {h}" preserveAspectRatio="none" width="100%" height="180" role="img" '
-        f'aria-label="Downloads per platform from {pts[0][0]} to {pts[-1][0]}">{lines}</svg>'
+        f'aria-label="{esc(what)} from {pts[0][0]} to {pts[-1][0]}">{lines}</svg>'
         f'<div class="axis"><span>{pts[0][0]}</span><span>{pts[-1][0]}</span></div>'
     )
 
 
-def render(today, counts, totals, snap, snap_total, rows, fields):
+def render(today, counts, totals, snap, snap_total, rows, fields, visits=None):
     names = [p for p, _ in PLATFORMS]
     stable = {v: r for v, r in counts.items() if "-" not in v}
     latest = next(iter(stable), None)
@@ -188,6 +246,18 @@ def render(today, counts, totals, snap, snap_total, rows, fields):
     for metric, series in sorted(snap.items()):
         ranked = sorted(series.items(), key=lambda kv: -kv[1])[:10]
         cards.append(f'<div class="card"><h2>{esc(titles.get(metric, metric))}</h2>{bars(ranked, lambda _: "#2e9e6b")}</div>')
+    if visits:
+        daily, refs, paths = visits
+        cards += [
+            '<div class="card wide"><h2>Repository traffic per day</h2>' + legend(TRAFFIC)
+            + line_chart(daily, TRAFFIC, "Repository traffic") + "</div>",
+            '<div class="card"><h2>Referring sites, 14 days</h2>'
+            + (bars(refs[:10], lambda _: COLORS[0]) or '<p class="note">None yet.</p>') + "</div>",
+            '<div class="card"><h2>Top pages, 14 days</h2>'
+            + (bars(paths[:10], lambda _: COLORS[0]) or '<p class="note">None yet.</p>') + "</div>",
+        ]
+    else:
+        cards.append('<div class="card"><h2>Traffic</h2><p class="note">Repository traffic unavailable today.</p></div>')
     if not snap:
         cards.append('<div class="card"><h2>Snap</h2><p class="note">Snap metrics unavailable today.</p></div>')
     return (
@@ -200,8 +270,10 @@ def render(today, counts, totals, snap, snap_total, rows, fields):
         + '</div><div class="grid">' + "".join(cards) + "</div>"
         "<footer>GitHub counts include Homebrew and winget, which download from GitHub Releases, "
         "minus the 3 downloads the release pipeline makes itself (1 .dmg, 2 .deb). "
+        "Referrers and pages count unique visitors. Clones include CI checkouts and bots. "
         "The apt repo has no counts, and the app sends no telemetry. "
-        '<a href="history.csv">history.csv</a></footer></main></html>'
+        '<a href="history.csv">history.csv</a> · <a href="traffic.csv">traffic.csv</a> · '
+        '<a href="referrers.csv">referrers.csv</a></footer></main></html>'
     )
 
 
@@ -216,17 +288,11 @@ def main(out, snap_files):
 
     history = os.path.join(out, "history.csv")
     fields = ["date", *totals, "Snap devices"]
-    rows = []
-    if os.path.exists(history):
-        with open(history) as f:
-            rows = [r for r in csv.DictReader(f) if r["date"] != today]
+    rows = [r for r in read_csv(history) if r["date"] != today]
     rows.append({"date": today, **totals, "Snap devices": "" if snap_total is None else snap_total})
-    with open(history, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
-        w.writeheader()
-        w.writerows(rows)
+    write_csv(history, fields, rows)
 
-    page = render(today, counts, totals, snap, snap_total, rows, fields)
+    page = render(today, counts, totals, snap, snap_total, rows, fields, traffic(out, today))
     with open(os.path.join(out, "index.html"), "w") as f:
         f.write(page)
 

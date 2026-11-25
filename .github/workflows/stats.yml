@@ -2,6 +2,8 @@ name: stats
 
 # Daily download statistics, published at <pages>/stats/ (scripts/stats.py). Snap numbers need
 # SNAP_METRICS_CREDENTIALS (`snapcraft export-login --acls package_metrics`); without it they are skipped.
+# Repository traffic needs STATS_TRAFFIC_TOKEN: a fine-grained token for this repo with
+# Administration: read (GITHUB_TOKEN cannot read traffic); without it the traffic cards are skipped.
 # GitHub sometimes skips a scheduled run, so a second daily slot backs it up; a rerun the
 # same day replaces that day's row.
 on:
@@ -36,7 +38,9 @@ jobs:
               --start "$(date -d '-3 days' +%F)" --end "$(date -d '-1 day' +%F)" >"snap-metrics/$m.json" \
               || rm -f "snap-metrics/$m.json"
           done
-      - run: |
+      - env:
+          TRAFFIC_TOKEN: ${{ secrets.STATS_TRAFFIC_TOKEN }}
+        run: |
           git fetch --depth 1 origin gh-pages
           git worktree add pages FETCH_HEAD
           git -C pages switch -c gh-pages
