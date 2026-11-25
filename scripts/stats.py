@@ -156,6 +156,12 @@ td:first-child,th:first-child{text-align:left}
 .band{fill:var(--ink);opacity:0}.band:hover{opacity:.08}
 #tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);padding:4px 8px;
 border-radius:6px;font-size:13px;white-space:nowrap;display:none;z-index:9}
+nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line)}
+nav a{padding:8px 12px;text-decoration:none;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+nav a[aria-selected=true]{color:var(--ink);border-color:#2f6fdb;font-weight:600}
+.src{margin:0 0 14px}.src:empty{display:none}
+a.group{text-decoration:none;display:block}a.group:hover{border-color:#2f6fdb}
+.group .kpis{margin:0 0 8px;gap:10px;grid-template-columns:repeat(auto-fit,minmax(100px,1fr))}.more{color:var(--muted);font-size:13px}
 footer{color:var(--muted);font-size:13px;margin-top:20px}a{color:inherit}
 """
 
@@ -173,6 +179,21 @@ document.addEventListener("pointermove", e => {
   tip.style.top = Math.max(4, e.clientY - r.height - 10) + "px";
 });
 document.addEventListener("pointerleave", () => { tip.style.display = "none"; });
+"""
+
+
+# Shows the tab named in the URL hash (default: the first); without JS every tab shows.
+TABS_JS = """
+function show() {
+  const id = location.hash.slice(1);
+  const tabs = [...document.querySelectorAll("section[role=tabpanel]")];
+  const cur = tabs.find(t => t.id === id) || tabs[0];
+  tabs.forEach(t => t.hidden = t !== cur);
+  document.querySelectorAll("nav a").forEach(a => a.setAttribute("aria-selected", a.hash === "#" + cur.id));
+  scrollTo(0, 0);
+}
+addEventListener("hashchange", show);
+show();
 """
 
 
@@ -242,66 +263,104 @@ def line_chart(rows, names, what="Downloads per platform"):
     )
 
 
+def card(title, body, wide=False):
+    return f'<div class="card{" wide" if wide else ""}"><h2>{esc(title)}</h2>{body}</div>'
+
+
+def kpi_group(title, items, tab):
+    tiles = "".join(f'<div class="kpi"><b>{esc(n)}</b><span>{esc(t)}</span></div>' for n, t in items)
+    return (
+        f'<a class="card group" href="#{tab}"><h2>{esc(title)}</h2>'
+        f'<div class="kpis">{tiles}</div><span class="more">Details →</span></a>'
+    )
+
+
 def render(today, counts, totals, snap, snap_total, rows, fields, visits=None):
+    """One overview tab of headline numbers, then one tab per data source; nothing mixes sources."""
     names = [p for p, _ in PLATFORMS]
     stable = {v: r for v, r in counts.items() if "-" not in v}
     latest = next(iter(stable), None)
-    kpis = [
-        (sum(totals.values()), "GitHub downloads"),
-        (sum(stable[latest].values()) if latest else 0, f"Downloads of {latest or 'latest'}"),
-        ("n/a" if snap_total is None else snap_total, "Snap devices now"),
-        (len(stable), "Stable releases"),
+    na = "n/a"
+
+    github = [
+        card("Downloads per release", legend(names)
+             + bars([(v, [r[p] for p in names]) for v, r in counts.items()], stacked=COLORS, names=names)
+             + "<details><summary>Numbers</summary><table><tr><th>Release</th>"
+             + "".join(f"<th>{esc(p)}</th>" for p in names) + "</tr>"
+             + "".join(
+                 f"<tr><td>{esc(v)}</td>" + "".join(f"<td>{r[p]}</td>" for p in names) + "</tr>"
+                 for v, r in counts.items()
+             )
+             + "</table></details>", wide=True),
+        card("Total over time", legend(names) + line_chart(rows, names), wide=True),
+        card("By platform", bars([(p, totals[p]) for p in names], lambda p: COLORS[names.index(p)])),
     ]
-    cards = [
-        '<div class="card wide"><h2>Downloads per release</h2>' + legend(names)
-        + bars([(v, [r[p] for p in names]) for v, r in counts.items()], stacked=COLORS, names=names)
-        + "<details><summary>Numbers</summary><table><tr><th>Release</th>"
-        + "".join(f"<th>{esc(p)}</th>" for p in names) + "</tr>"
-        + "".join(
-            f"<tr><td>{esc(v)}</td>" + "".join(f"<td>{r[p]}</td>" for p in names) + "</tr>"
-            for v, r in counts.items()
-        )
-        + "</table></details></div>",
-        '<div class="card wide"><h2>Total over time</h2>' + legend(names) + line_chart(rows, names) + "</div>",
-        '<div class="card"><h2>By platform</h2>'
-        + bars([(p, totals[p]) for p in names], lambda p: COLORS[names.index(p)]) + "</div>",
-    ]
+
     titles = {
-        "installed_base_by_country": "Snap devices by country",
-        "installed_base_by_version": "Snap devices by version",
-        "installed_base_by_operating_system": "Snap devices by system",
+        "installed_base_by_version": "Devices by version",
+        "installed_base_by_country": "Devices by country",
+        "installed_base_by_operating_system": "Devices by system",
     }
-    for metric, series in sorted(snap.items()):
-        ranked = sorted(series.items(), key=lambda kv: -kv[1])[:10]
-        cards.append(f'<div class="card"><h2>{esc(titles.get(metric, metric))}</h2>{bars(ranked, lambda _: "#2e9e6b")}</div>')
+    snap_rows = [r for r in rows if r.get("Snap devices")]
+    snap_cards = [card("Devices over time", line_chart(snap_rows, ["Snap devices"], "Snap devices"), wide=True)]
+    for metric in sorted(snap, key=lambda m: list(titles).index(m) if m in titles else 99):
+        ranked = sorted(snap[metric].items(), key=lambda kv: -kv[1])[:10]
+        snap_cards.append(card(titles.get(metric, metric), bars(ranked, lambda _: COLORS[2])))
+    if not snap:
+        snap_cards.append(card("Today", '<p class="note">Snap metrics unavailable today.</p>'))
+
     if visits:
         daily, refs, paths = visits
-        cards += [
-            '<div class="card wide"><h2>Repository traffic per day</h2>' + legend(TRAFFIC)
-            + line_chart(daily, TRAFFIC, "Repository traffic") + "</div>",
-            '<div class="card"><h2>Referring sites, 14 days</h2>'
-            + (bars(refs[:10], lambda _: COLORS[0]) or '<p class="note">None yet.</p>') + "</div>",
-            '<div class="card"><h2>Top pages, 14 days</h2>'
-            + (bars(paths[:10], lambda _: COLORS[0]) or '<p class="note">None yet.</p>') + "</div>",
+        last14 = daily[-14:]
+        traffic_cards = [
+            card("Traffic per day", legend(TRAFFIC) + line_chart(daily, TRAFFIC, "Repository traffic"), wide=True),
+            card("Referring sites, 14 days", bars(refs[:10], lambda _: COLORS[0]) or '<p class="note">None yet.</p>'),
+            card("Top pages, 14 days", bars(paths[:10], lambda _: COLORS[0]) or '<p class="note">None yet.</p>'),
         ]
+        visitors = sum(int(r["Views"] or 0) for r in last14)
     else:
-        cards.append('<div class="card"><h2>Traffic</h2><p class="note">Repository traffic unavailable today.</p></div>')
-    if not snap:
-        cards.append('<div class="card"><h2>Snap</h2><p class="note">Snap metrics unavailable today.</p></div>')
+        traffic_cards = [card("Today", '<p class="note">Repository traffic unavailable today.</p>')]
+        visitors = na
+
+    overview = [
+        kpi_group("GitHub downloads", [
+            (sum(totals.values()), "All releases"),
+            (sum(stable[latest].values()) if latest else 0, f"{latest or 'Latest'} downloads"),
+            (len(stable), "Stable releases"),
+        ], "github"),
+        kpi_group("Snap Store", [(na if snap_total is None else snap_total, "Devices now")], "snap"),
+        kpi_group("GitHub repository", [(visitors, "Page views, 14 days")], "traffic"),
+    ]
+    tabs = [
+        ("overview", "Overview", "", overview),
+        ("github", "GitHub downloads",
+         "Direct downloads from GitHub Releases. Homebrew and winget install from there too, so they "
+         "are included. The 3 downloads the release pipeline makes itself (1 .dmg, 2 .deb) are subtracted.",
+         github),
+        ("snap", "Snap Store",
+         "Devices with the Snap installed, as reported by the Snap Store. Separate from GitHub downloads.",
+         snap_cards),
+        ("traffic", "Repository traffic",
+         "Visits to the GitHub repository. Referrers and pages count unique visitors; "
+         "clones include CI checkouts and bots.",
+         traffic_cards),
+    ]
+    nav = "".join(f'<a role="tab" href="#{t}">{esc(label)}</a>' for t, label, _, _ in tabs)
+    panels = "".join(
+        f'<section id="{t}" role="tabpanel"><p class="note src">{esc(note)}</p>'
+        f'<div class="grid">{"".join(body)}</div></section>'
+        for t, _, note, body in tabs
+    )
     return (
         '<!doctype html><html lang="en"><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         f"<title>Nacho Viewer stats</title><style>{CSS}</style><main>"
-        f'<h1>Nacho Viewer downloads</h1><p class="sub">Updated {today} · refreshed daily</p>'
-        '<div class="kpis">'
-        + "".join(f'<div class="card kpi"><b>{esc(n)}</b><span>{esc(t)}</span></div>' for n, t in kpis)
-        + '</div><div class="grid">' + "".join(cards) + "</div>"
-        "<footer>GitHub counts include Homebrew and winget, which download from GitHub Releases, "
-        "minus the 3 downloads the release pipeline makes itself (1 .dmg, 2 .deb). "
-        "Referrers and pages count unique visitors. Clones include CI checkouts and bots. "
-        "The apt repo has no counts, and the app sends no telemetry. "
+        f'<h1>Nacho Viewer stats</h1><p class="sub">Updated {today} · refreshed daily</p>'
+        f'<nav role="tablist">{nav}</nav>{panels}'
+        "<footer>The apt repo has no download counts, and the app sends no telemetry. Data: "
         '<a href="history.csv">history.csv</a> · <a href="traffic.csv">traffic.csv</a> · '
-        f'<a href="referrers.csv">referrers.csv</a></footer></main><div id="tip"></div><script>{TIP_JS}</script></html>'
+        f'<a href="referrers.csv">referrers.csv</a></footer></main><div id="tip"></div>'
+        f"<script>{TIP_JS}{TABS_JS}</script></html>"
     )
 
 
