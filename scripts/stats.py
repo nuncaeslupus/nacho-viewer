@@ -46,27 +46,23 @@ def releases():
 
 
 def github_counts(data):
-    """{version: {platform: new downloads, "Updates": n}} for every release, newest first.
+    """{version: {platform: downloads, "Update checks": n}} for every release, newest first.
 
-    The in-app updater fetches a bundle together with its .sig, and nothing else fetches a
-    .sig, so each .sig download is one update; it is moved out of its platform's count."""
+    Every file of every release, release candidates included, is fetched once by automation
+    soon after publishing (each shows at least 1), so 1 is taken off each file. The app's
+    updater reads latest.json from the latest release, so its downloads are update checks."""
     table = {}
     for rel in sorted(data, key=lambda r: r.get("published_at") or r["created_at"], reverse=True):
-        row = table.setdefault(rel["tag_name"], {**{p: 0 for p, _ in PLATFORMS}, "Updates": 0})
-        updates = dict.fromkeys(row, 0)
+        row = table.setdefault(rel["tag_name"], {**{p: 0 for p, _ in PLATFORMS}, "Update checks": 0})
         for asset in rel["assets"]:
             name, n = asset["name"], asset["download_count"]
-            if name.endswith(".sig") and (p := platform(name.removesuffix(".sig"))):
-                updates[p] += n
+            if name == "latest.json":
+                row["Update checks"] += n
             elif p := platform(name):
-                row[p] += n
+                row[p] += max(0, n - 1)
         if not rel.get("prerelease"):
             for p, n in PIPELINE.items():
                 row[p] = max(0, row[p] - n)
-        for p, n in updates.items():
-            if n:
-                row[p] = max(0, row[p] - n)
-                row["Updates"] += n
     return table
 
 
@@ -289,13 +285,13 @@ def kpi_group(title, items, tab):
 def render(today, counts, totals, snap, snap_total, rows, fields, visits=None):
     """One overview tab of headline numbers, then one tab per data source; nothing mixes sources."""
     names = [p for p, _ in PLATFORMS]
-    cols = [*names, "Updates"]
+    cols = [*names, "Update checks"]
     stable = {v: r for v, r in counts.items() if "-" not in v}
     latest = next(iter(stable), None)
     na = "n/a"
 
     github = [
-        card("New downloads per release", legend(names)
+        card("Downloads per release", legend(names)
              + bars([(v, [r[p] for p in names]) for v, r in counts.items()], stacked=COLORS, names=names)
              + "<details><summary>Numbers</summary><table><tr><th>Release</th>"
              + "".join(f"<th>{esc(p)}</th>" for p in cols) + "</tr>"
@@ -304,9 +300,9 @@ def render(today, counts, totals, snap, snap_total, rows, fields, visits=None):
                  for v, r in counts.items()
              )
              + "</table></details>", wide=True),
-        card("Total over time", legend(cols) + line_chart([r for r in rows if r.get("Updates")], cols, "Downloads and updates"), wide=True),
-        card("New downloads by platform", bars([(p, totals[p]) for p in names], lambda p: COLORS[names.index(p)])),
-        card("In-app updates per release", bars([(v, r["Updates"]) for v, r in counts.items()], lambda _: COLORS[4])),
+        card("Total over time", legend(cols) + line_chart([r for r in rows if r.get("Update checks")], cols, "Downloads and update checks"), wide=True),
+        card("Downloads by platform", bars([(p, totals[p]) for p in names], lambda p: COLORS[names.index(p)])),
+        card("Update checks per release", bars([(v, r["Update checks"]) for v, r in counts.items()], lambda _: COLORS[4])),
     ]
 
     titles = {
@@ -337,9 +333,9 @@ def render(today, counts, totals, snap, snap_total, rows, fields, visits=None):
 
     overview = [
         kpi_group("GitHub downloads", [
-            (sum(totals[p] for p in names), "New downloads"),
-            (totals["Updates"], "In-app updates"),
-            (sum(stable[latest][p] for p in names) if latest else 0, f"{latest or 'Latest'} new downloads"),
+            (sum(totals[p] for p in names), "Downloads"),
+            (totals["Update checks"], "Update checks"),
+            (sum(stable[latest][p] for p in names) if latest else 0, f"{latest or 'Latest'} downloads"),
         ], "github"),
         kpi_group("Snap Store", [(na if snap_total is None else snap_total, "Devices now")], "snap"),
         kpi_group("GitHub repository", [(visitors, "Page views, 14 days")], "traffic"),
@@ -348,9 +344,10 @@ def render(today, counts, totals, snap, snap_total, rows, fields, visits=None):
         ("overview", "Overview", "", overview),
         ("github", "GitHub downloads",
          "Direct downloads from GitHub Releases. Homebrew and winget install from there too, so they "
-         "are included. The 3 downloads the release pipeline makes itself (1 .dmg, 2 .deb) are subtracted. "
-         "Updates are installed copies updating themselves (counted from the updater's .sig downloads), "
-         "kept apart from new downloads.",
+         "are included. Not counted: the one automated fetch every file gets after "
+         "publishing, and the release pipeline's own downloads (1 .dmg, 2 .deb). In-app updates download "
+         "a file too, so they count here. Update checks are installed copies asking the latest release "
+         "for latest.json.",
          github),
         ("snap", "Snap Store",
          "Devices with the Snap installed, as reported by the Snap Store. Separate from GitHub downloads.",
@@ -383,7 +380,7 @@ def main(out, snap_files):
     os.makedirs(out, exist_ok=True)
     today = datetime.date.today().isoformat()
     counts = github_counts(releases())
-    totals = {k: sum(r[k] for r in counts.values()) for k in [*(p for p, _ in PLATFORMS), "Updates"]}
+    totals = {k: sum(r[k] for r in counts.values()) for k in [*(p for p, _ in PLATFORMS), "Update checks"]}
     snap = snap_series(snap_files)
     versions = snap.get("installed_base_by_version")
     snap_total = sum(versions.values()) if versions is not None else None
