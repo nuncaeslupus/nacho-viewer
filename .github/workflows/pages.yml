@@ -1,10 +1,10 @@
 name: pages
 
-# Copies site/ to the root of gh-pages, beside the apt repo that channels.yml keeps there.
+# Copies site/ and llms.txt to the root of gh-pages, beside the apt repo that channels.yml keeps there.
 on:
   push:
     branches: [main]
-    paths: ['site/**']
+    paths: ['site/**', 'llms.txt', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 # channels.yml's apt job pushes to gh-pages too.
@@ -28,6 +28,7 @@ jobs:
             git worktree add --orphan -b gh-pages pages
           fi
           cp -r site/. pages/
+          cp llms.txt pages/
           # GitHub Pages serves the files as they are.
           touch pages/.nojekyll
           cd pages
