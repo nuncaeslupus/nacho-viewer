@@ -1,0 +1,16 @@
+# Nacho Viewer
+
+> Markdown, beautifully printed: a free, open-source document viewer for Linux, Windows and macOS.
+
+Nacho Viewer makes `.md` files read like a well-typeset document instead of plain text. Images and PDF pages come next; it stays a viewer, not an editor.
+
+## Docs
+
+- [README](https://github.com/nuncaeslupus/nacho-viewer/blob/main/README.md)
+- [User guide](https://github.com/nuncaeslupus/nacho-viewer/blob/main/docs/guide.md)
+- [Changelog](https://github.com/nuncaeslupus/nacho-viewer/blob/main/CHANGELOG.md)
+
+## Optional
+
+- [Contributing](https://github.com/nuncaeslupus/nacho-viewer/blob/main/CONTRIBUTING.md)
+- [Security policy](https://github.com/nuncaeslupus/nacho-viewer/blob/main/SECURITY.md)

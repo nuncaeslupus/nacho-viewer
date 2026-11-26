@@ -82,3 +82,5 @@ Windows installers are built and signed only by this repository's release workfl
 ## License
 
 [MIT](LICENSE)
+
+More tools by the same author: [github.com/nuncaeslupus](https://github.com/nuncaeslupus).
