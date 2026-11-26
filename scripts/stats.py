@@ -49,7 +49,7 @@ def github_counts(data):
     """{version: {platform: downloads, "Update checks": n}} for every release, newest first.
 
     Every file of every release, release candidates included, is fetched once by automation
-    soon after publishing (each shows at least 1), so 1 is taken off each file. The app's
+    soon after publishing (each shows at least 1), so 1 is taken off each file, latest.json too. The app's
     updater reads latest.json from the latest release, so its downloads are update checks."""
     table = {}
     for rel in sorted(data, key=lambda r: r.get("published_at") or r["created_at"], reverse=True):
@@ -57,7 +57,7 @@ def github_counts(data):
         for asset in rel["assets"]:
             name, n = asset["name"], asset["download_count"]
             if name == "latest.json":
-                row["Update checks"] += n
+                row["Update checks"] += max(0, n - 1)
             elif p := platform(name):
                 row[p] += max(0, n - 1)
         if not rel.get("prerelease"):
@@ -300,7 +300,7 @@ def render(today, counts, totals, snap, snap_total, rows, fields, visits=None):
                  for v, r in counts.items()
              )
              + "</table></details>", wide=True),
-        card("Total over time", legend(cols) + line_chart([r for r in rows if r.get("Update checks")], cols, "Downloads and update checks"), wide=True),
+        card("Total over time", legend(cols) + line_chart([r for r in rows if r.get("Update checks") not in (None, "")], cols, "Downloads and update checks"), wide=True),
         card("Downloads by platform", bars([(p, totals[p]) for p in names], lambda p: COLORS[names.index(p)])),
         card("Update checks per release", bars([(v, r["Update checks"]) for v, r in counts.items()], lambda _: COLORS[4])),
     ]
