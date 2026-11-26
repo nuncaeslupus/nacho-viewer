@@ -79,6 +79,12 @@ Windows installers are built and signed only by this repository's release workfl
 
 **Privacy:** this program does not transfer any information to other networked systems unless the user asks it to. The one exception is the update check, which asks GitHub Releases whether a newer version exists.
 
+## Related projects
+
+- [ai-chat-exporter](https://github.com/nuncaeslupus/ai-chat-exporter) — exports ChatGPT, Claude and Gemini conversations to Markdown and more; open them here.
+- [research-buddy](https://github.com/nuncaeslupus/research-buddy) — versioned Markdown research documents built into a single-file HTML site.
+- [image-to-svg](https://github.com/nuncaeslupus/image-to-svg) — raster-to-SVG converter that runs in the browser; nothing is uploaded.
+
 ## License
 
 [MIT](LICENSE)
